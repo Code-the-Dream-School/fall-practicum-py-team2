@@ -3,57 +3,59 @@
 ### 1. Function Signatures
 ```python
 def extract(feed_url: str) -> dict:
-    """Fetches raw JSON payload from the GBFS API endpoint."""
+    """
+    Queries the central GBFS auto-discovery master catalog URL 
+    to dynamically extract child dictionary data.
+    """
     pass
 
-def load_raw(raw_payload: dict, feed_type: str, db_client) -> bool:
-    """Appends unparsed JSON wrapped with extraction metadata to Supabase."""
-    pass
-
-def transform(raw_info: dict, raw_status: dict) -> list[dict]:
-    """Flattens, cleans, and combines raw records into Gold analytics rows."""
+def to_csv(df, file_path: str) -> None:
+    """
+    Saves processed DataFrames locally to CSV tracking files 
+    prior to analytical database loading.
+    """
     pass
 ```
 ---
 ### 2. Input & Quality Rules
 * **Target Feeds:** `station_information.json` (Static layout) & `station_status.json` (Live metrics).
 
-* **Isolation Rule:** All functions take plain data primitives and read secrets from environment variables. Connection client handles (`db_client`) are an exception to allow database storage interactions.
+* **Target Master Feed:** `https://lyft.com` (Auto-discovers structural sub-feeds).
+* **Region Filtering:** Pipeline strictly isolates records where `region_id == "3"` (San Francisco).
+* **Geospatial Bounding:** Free-floating bikes are dynamically bounded using the minimum and maximum coordinates of active stations to filter out stray locations.
 
 * **Data Dropping:** If a record lacks a valid `station_id` or GPS coordinates, drop it from processing.
 * **Missing Counts:** If bike or dock numbers are missing, default them to `0`.
 
 ---
-#### 🗄️ Raw Schema (Bronze Layer)
-* **Database Columns:** `id` (UUID), `extracted_at` (Timestamp), `feed_type` (Text), `feed_url` (Text), `raw_json` (JSONB)
-* **Example Payload:**
-```json
-{
-  "extracted_at": "2026-10-04T22:00:00Z",
-  "feed_type": "station_status",
-  "feed_url": "https://baywheels.com",
-  "raw_json": {
-    "data": {
-      "stations": [{ "station_id": "st_82", "num_bikes_available": 10, "num_docks_available": 5 }]
-    }
-  }
-}
-```
+
+### 3. Data Schemas
+
+#### Raw Schema (Bronze Layer)
+Instead of raw JSON arrays, the extraction module outputs clean, joined data structures directly to local CSV files:
+
+* **File Track 1:** `station_information.csv`
+* **Columns:** `station_id`, `name`, `short_name`, `lon`, `lat`, `region_id`, `is_charging`, `address`, `num_bikes_available`, `num_bocks_disabled`, `num_docks_available`, `num_docks_disabled`, `is_installed`, `is_renting`, `is_returning`, `last_reported`
+
+* **File Track 2:** `bike_information.csv`
+* **Columns:** `bike_id`, `lon`, `lat`, `is_reserved`, `is_disabled`, `current_range_meters`, `vehicle_type_id`, `form_factor`, `propulsion_type`, `max_range_meters`
+
+---
 
 #### Gold Schema (Analytics Layer)
-* **Granularity:** One flat row per station per timestamp extraction.
-* **Database Columns:** `timestamp`, `station_id`, `station_name`, `latitude`, `longitude`, `bikes_available`, `docks_available`, `capacity`, `utilization_rate`
-* **Example Payload:**
+* **Granularity:** One flat row per asset per timestamp execution.
+* **Database Target:** Structured tables optimized for React map dashboard rendering.
+* **Example Station Record:**
 ```json
 {
-  "timestamp": "2026-10-04T22:00:00Z",
-  "station_id": "st_82",
-  "station_name": "Broadway & 14th St",
-  "latitude": 37.8044,
-  "longitude": -122.2712,
-  "bikes_available": 10,
-  "docks_available": 5,
-  "capacity": 15,
-  "utilization_rate": 0.67
+  "timestamp": "2026-10-09T13:11:00Z",
+  "station_id": "c4c4484d-0e18-44dd",
+  "station_name": "Williams Ave at 3rd St",
+  "latitude": 37.72927,
+  "longitude": -122.39289,
+  "bikes_available": 2,
+  "docks_available": 16,
+  "capacity": 18,
+  "utilization_rate": 0.11
 }
 ```
