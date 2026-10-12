@@ -5,7 +5,7 @@ Discuss tasks, questions, and concerns.
 Zoom: Project meeting
 
 **Standup meeting:** Every Thursday at 9 PM ET (6 PM PT)
-Brief updates on each team member's current tasks.
+Brief updates on tasks in progress and plans for upcoming tasks. If a team member cannot attend the meeting, they should post their progress update in the project Slack channel #fall26-py-team2 by the end of the day.
 Slack: #fall26-py-team2
 
 Project meetings and task updates are important for maintaining a smooth workflow and completing the project on time.
@@ -45,7 +45,7 @@ If they cannot review within that time, they should let the author know when the
 
 ## Pull Request
 Before a pull request is merged:
-- At least one teammate must review it.
+- At least two teammates and one mentor must review and approve it.
 - All requested changes and review comments must be addressed.
 - All required automated checks must pass.
 - The PR should be approved by the reviewer.
