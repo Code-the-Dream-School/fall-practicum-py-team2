@@ -21,7 +21,7 @@ Project meetings and task updates are important for maintaining a smooth workflo
 - All code and documentation changes should be submitted through a pull request.
 - Team members should pull the latest changes from 'main' before starting new work when appropriate.
 - Commit messages should clearly describe the changes. 
-- Pull requests should have a clear title and a concise but comprehensive description. The title should start with the relevant ticket number, such as AIR-X or KAN-X
+
 
 ## Tasks
 All the tasks are stored in Jira (https://practicumteam2.atlassian.net/jira/software/projects/KAN/list?jql=project%20%3D%20KAN%20ORDER%20BY%20cf%5B10019%5D%20ASC)
@@ -44,6 +44,8 @@ Teammates should respond to review requests within **24 hours** when possible.
 If they cannot review within that time, they should let the author know when they expect to be available.
 
 ## Pull Request
+- Pull requests should have a clear title and a concise but comprehensive description. 
+- The title should start with the relevant ticket number (like KAN x) and start from BKS. 
 Before a pull request is merged:
 - At least two teammates and one mentor must review and approve it.
 - All requested changes and review comments must be addressed.
