@@ -1,5 +1,11 @@
+import functools
 import requests
 import pandas as pd
+import time
+
+BASE_URL = "https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json" # The outermost url looking at gbfs.json. All other data/urls are accessible from here.
+REGION_ID = "3"
+ONE_DAY = 24 * 60 * 60
 
 # Function to grab data
 def extract(url):
@@ -7,15 +13,21 @@ def extract(url):
     response.raise_for_status()
     return response.json()['data']
 
-BASE_URL = "https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json" # The outermost url looking at gbfs.json. All other data/urls are accessible from here.
-REGION_ID = "3"
+# Caches data
+@functools.lru_cache(maxsize=32)
+def _cached_extract(url, time_bucket):
+    return extract(url)
+
+# Checks data cache, and updates if time has expired
+def cached_extract(url, max_age=ONE_DAY):
+    return _cached_extract(url, int(time.time() // max_age))
 
 # Get dictionary of URLS
-main_feed = extract(BASE_URL)['en']['feeds']
+main_feed = cached_extract(BASE_URL)['en']['feeds']
 feed_urls = {feed['name'] : feed ['url'] for feed in main_feed}
 
 # Collect and organize station information
-info = pd.DataFrame(extract(feed_urls['station_information'])['stations'])
+info = pd.DataFrame(cached_extract(feed_urls['station_information'])['stations'])
 status = pd.DataFrame(extract(feed_urls['station_status'])['stations'])
 stations = info.merge(status, on="station_id", how="left")
 stations = stations[stations["region_id"] == REGION_ID]
@@ -25,10 +37,9 @@ stations.to_csv('./station_information.csv', index=False)
 
 # Collect and organize bike information
 free_bike = pd.DataFrame(extract(feed_urls['free_bike_status'])['bikes'])
-bike_type = pd.DataFrame(extract(feed_urls['vehicle_types'])['vehicle_types'])
+bike_type = pd.DataFrame(cached_extract(feed_urls['vehicle_types'])['vehicle_types'])
 bikes = free_bike.merge(bike_type, on="vehicle_type_id", how="left")
 in_sf = (bikes['lat'].between(stations['lat'].min(), stations['lat'].max())
          & bikes['lon'].between(stations['lon'].min(), stations['lon'].max()))
-bikes = bikes[in_sf]
 bikes = bikes[in_sf].drop(columns=['rental_uris'])
 bikes.to_csv('./bike_information.csv', index=False)
