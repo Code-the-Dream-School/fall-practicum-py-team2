@@ -20,7 +20,7 @@ def to_csv(df, file_path: str) -> None:
 ### 2. Input & Quality Rules
 * **Target Feeds:** `station_information.json` (Static layout) & `station_status.json` (Live metrics).
 
-* **Target Master Feed:** `https://lyft.com` (Auto-discovers structural sub-feeds).
+* **Target Master Feed:** `https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json` (Auto-discovers structural sub-feeds).
 * **Region Filtering:** Pipeline strictly isolates records where `region_id == "3"` (San Francisco).
 * **Geospatial Bounding:** Free-floating bikes are dynamically bounded using the minimum and maximum coordinates of active stations to filter out stray locations.
 
@@ -32,10 +32,10 @@ def to_csv(df, file_path: str) -> None:
 ### 3. Data Schemas
 
 #### Raw Schema (Bronze Layer)
-Instead of raw JSON arrays, the extraction module outputs clean, joined data structures directly to local CSV files:
+The extraction module returns raw dictionary data structures, which the pipeline workflow then processes and appends locally into CSV tracking files prior to analytical database loading:
 
 * **File Track 1:** `station_information.csv`
-* **Columns:** `station_id`, `name`, `short_name`, `lon`, `lat`, `region_id`, `is_charging`, `address`, `num_bikes_available`, `num_bocks_disabled`, `num_docks_available`, `num_docks_disabled`, `is_installed`, `is_renting`, `is_returning`, `last_reported`
+* **Columns:** `station_id`, `name`, `short_name`, `lon`, `lat`, `region_id`, `is_charging`, `address`, `num_bikes_available`, `num_bikes_disabled`, `num_docks_available`, `num_docks_disabled`, `is_installed`, `is_renting`, `is_returning`, `last_reported`
 
 * **File Track 2:** `bike_information.csv`
 * **Columns:** `bike_id`, `lon`, `lat`, `is_reserved`, `is_disabled`, `current_range_meters`, `vehicle_type_id`, `form_factor`, `propulsion_type`, `max_range_meters`
