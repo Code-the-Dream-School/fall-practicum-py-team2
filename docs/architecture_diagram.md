@@ -17,20 +17,25 @@ graph TD
     %% Data Pipeline Steps (Matched exactly to Data Contract)
     API["1. Lyft Master Feed<br>(https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json)"]:::blue
 
-    EXTRACT["2. def extract(url)<br>(Filters for SF Region ID '3')"]:::teal
+    EXTRACT["2. Python extract.py Engine<br>(Retrieves JSON Payload via HTTP)"]:::teal
     
-    CSV["3. def to_csv(df, file_path)<br>(station_information.csv & bike_information.csv)"]:::green
+    CSV["3. Data Transformation Layer<br>(Filters SF Region '3' & Norms to Pacific Time)"]:::teal
     
-    DB[("4. Supabase Database<br>(Gold Analytics Layer Schema)")]:::green
-    
-    DASH["5. Frontend Dashboard<br>(Live Map & utilization_rate)"]:::green
+    LOAD["4. Local Storage Tracks<br>(station_information.csv & bike_information.csv)"]:::green
 
-    AWS["6. Future AWS Cloud Staging<br>(EventBridge + Lambda Container)"]:::indigo
+    
+    DB[("5. Supabase Database<br>(Gold Analytical Storage Tables)")]:::green
+    
+    DASH["6. React Map Dashboard<br>(Responsive Maps & Depletion Charts)"]:::green
+
+    AWS["7. Future Sprint Cloud Migration<br>(AWS Pipeline Scaling Staging)"]:::indigo
+
 
     %% Flow Connections
     API --> EXTRACT
     EXTRACT --> CSV
-    CSV --> DB
+    CSV --> LOAD
+    LOAD --> DB
     DB --> DASH
     AWS -.-> EXTRACT
 ```
@@ -38,7 +43,7 @@ graph TD
 ---
 
 ### 2. Core Pipeline Components Explained
-* **Blue (Source):** The dynamic, live public Lyft master feed (`https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json`) providing auto-discovery access to station and status structures.
-* **Teal (Engine):** Our Python execution layer running `extract(url)` to filter data strictly down to San Francisco (`region_id == "3"`) and apply geospatial boundary truncations [INDEX].
-* **Green (Storage & UI):** Our local storage handlers calling `to_csv()` for station and bike logs, updating our indexed time-series tables in Supabase, and mapping fields like `utilization_rate` directly onto the interactive client dashboard map.
-* **Indigo (Cloud Plan):** Our architecture blueprint to host our decoupled data collection script inside a serverless AWS Lambda cron workflow container later [INDEX].
+** **Blue (Source):** Live feeds from the SF Bay Wheels GBFS auto-discovery catalog endpoint (`gbfs.json`), capturing dynamic system snapshots [6.0].
+* **Teal (Engine):** Our Python data execution layer querying endpoints via HTTP requests, filtering strictly for San Francisco coordinates (`region_id == '3'`), and normalizing execution timestamps to Pacific Time (`America/Los_Angeles`) [6.0].
+* **Green (Storage & UI):** Our pipeline export architecture saving processed data locally to clean tracking files (`station_information.csv` and `bike_information.csv`) before loading structured records into Supabase to power our frontend React map dashboard [6.0].
+* **Indigo (Cloud Plan):** Our high-level architecture blueprint plan to transition our local automation engines into highly scalable cloud computing triggers later in the project lifecycle.
