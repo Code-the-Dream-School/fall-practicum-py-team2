@@ -3,30 +3,35 @@ import time
 import requests
 import pandas as pd
 
-def main():
-    BASE_URL = "https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json"  # The outermost url looking at gbfs.json. All other data/urls are accessible from here.
-    REGION_ID = "3"
-    ONE_DAY = 24 * 60 * 60
+BASE_URL = "https://gbfs.lyft.com/gbfs/2.3/bay/gbfs.json"  # The outermost url looking at gbfs.json. All other data/urls are accessible from here.
+REGION_ID = "3"
+ONE_DAY = 24 * 60 * 60
 
-    # Function to grab data
-    def extract(url):
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        return response.json()['data']
 
-    # Caches data
-    @functools.lru_cache(maxsize=32)
-    def _cached_extract(url, time_bucket):
-        return extract(url)
+# Function to grab data
+def extract(url):
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    return response.json()['data']
 
-    # Checks data cache, and updates if time has expired
-    def cached_extract(url, max_age=ONE_DAY):
-        return _cached_extract(url, int(time.time() // max_age))
 
-    # LARRENZ: Added a cache_clear helper so pytest can wipe the memory clean between test runs
-    def cache_clear():
-        _cached_extract.cache_clear()
+# Caches data
+@functools.lru_cache(maxsize=32)
+def _cached_extract(url, time_bucket):
+    return extract(url)
 
+
+# Checks data cache, and updates if time has expired
+def cached_extract(url, max_age=ONE_DAY):
+    return _cached_extract(url, int(time.time() // max_age))
+
+# LARRENZ: Added a cache_clear helper so pytest can wipe the memory clean between test runs
+def cache_clear():
+    _cached_extract.cache_clear()
+
+
+# LARRENZ: added a main() function 
+if __name__ == "__main__":
     # Get dictionary of URLS
     main_feed = cached_extract(BASE_URL)['en']['feeds']
     feed_urls = {feed['name']: feed['url'] for feed in main_feed}
@@ -50,7 +55,3 @@ def main():
     )
     bikes = bikes[in_sf].drop(columns=['rental_uris'])
     bikes.to_csv('./bike_information.csv', index=False)
-
-    # LARRENZ: added a main() function 
-if __name__ == "__main__":
-    main()
