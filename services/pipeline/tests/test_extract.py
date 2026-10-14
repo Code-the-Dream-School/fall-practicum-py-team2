@@ -1,9 +1,7 @@
 # KAN-9: Unit tests for the extract() function.
 # These tests use mock data instead of calling the real API.
 #
-# NOTE: Waiting for the KAN-8 extract.py update.
-# Currently, importing extract.py triggers real API requests.
-# Do not run pytest until the import issue is fixed.
+
 
 from unittest.mock import patch, MagicMock
 import pytest
