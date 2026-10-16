@@ -1,5 +1,5 @@
 import pytest
-from src.pipeline.extract import extract
+from pipeline.extract.extract import extract
 
 def test_cache(monkeypatch):
     extract.cache_clear()
