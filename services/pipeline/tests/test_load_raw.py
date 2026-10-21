@@ -127,3 +127,32 @@ def test_load_raw_malformed_json(tmp_path):
 
     # Verify no database operation was attempted
     fake_supabase.table.assert_not_called()
+
+# Testing the behavior of load_raw() with a missing station_id
+def test_load_raw_missing_station_id(tmp_path):
+    # Create a station record without station_id
+    sample_data = [
+        {
+            "name": "Station A",
+            "num_bikes_available": 8,
+            "num_docks_available": 2,
+        }
+    ]
+
+    # Create a temporary JSON file
+    file_path = tmp_path / "missing_station_id.json"
+    file_path.write_text(json.dumps(sample_data))
+
+    # Create a fake Supabase client
+    fake_supabase = MagicMock()
+    fake_supabase.table.return_value.upsert.return_value.execute.return_value.count = 1
+
+    # Calling load_raw function
+    load_raw(
+        fake_supabase,
+        str(file_path),
+        "station_information"
+    )
+
+    # Check that invalid data was not sent to Supabase
+    fake_supabase.table.return_value.upsert.assert_not_called()
