@@ -3,7 +3,10 @@ import json
 import os
 from supabase import create_client
 
-# Taked a single JSON file and upserts it to superbase
+# Taked a single JSON file that was previously saved during the extract function and upserts it to superbase. 
+# Supabase tables were already made on the platform, with two for raw data (station_information and bike_information). 
+# This code runs the load_raw function twice, once for each table.
+
 def load_raw(supabase, file_name, table_name):
     try:
         with open(file_name, "r") as file:
@@ -18,6 +21,8 @@ def load_raw(supabase, file_name, table_name):
                 print("No new rows")
     except Exception as e:
         e.raise_for_status
+
+# Main function cycles through existed JSON data and funnels it to the load_raw function.
 
 if __name__ == "__main__":
     # Creates the supabase client
