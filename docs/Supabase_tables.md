@@ -57,6 +57,7 @@ The script is supposed to be run in the SQL editor of Supabase dashboard.
 ## stations_raw
 Table contains raw data from station_information.json
 | Column |	Data type |	Constraints |	Description |
+|---|---|---|---|
 | station_id | 	TEXT | 	NOT NULL, part of Primary key |  Station identifier | 
 | name  | 	TEXT  | 	—	 | Station name | 
 | short_name | 	TEXT | 	—	 | Short station name | 
