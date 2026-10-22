@@ -79,12 +79,12 @@ Table contains raw data from station_information.json
 | num_ebikes_available | 	INTEGER	 | — | 	Number of available e-bikes  | 
 | num_scooters_available | 	INTEGER	 | — | 	Number of available scooters | 
 | num_scooters_unavailable | 	INTEGER	 | — | 	Number of unavailable scooters | 
-|---|---|---|---|
+
 Primary key: (station_id, collected_at)
 
 ## enriched_bks
 The table contains cleaned and enriched data
-Column	Data type	Constraints	Description
+| Column | 	Data type | Constraints | Description
 |---|---|---|---|
 | collected_at |  	TIMESTAMPTZ	NOT NULL, part of PK -	Time the record was collected (from raw data) | 
 | num_bikes_available | 	INTEGER	 | —	 | Total number of available bikes (total number of e-bikes and manual bikes available from raw data) | 
@@ -100,12 +100,12 @@ Column	Data type	Constraints	Description
 | lat | 	NUMERIC	 | NOT NULL	 | Latitude | 
 | bike_rent_rate | 	NUMERIC	 | 	-  | Manual-bike rental rate, num_manual_bikes_available / num_bikes_available * 100% | 
 | ebike_rent_rate | 	NUMERIC	 | -  | 	E-bike rental rate, num_ebikes_available / num_bikes_available * 100% | 
-|---|---|---|---|
+
 Primary key: (station_id, collected_at)
 
 ## logs
 The table contains pipeline logs
-Column	Data type	Constraints	Description
+| Column | Data type | 	Constraints	Description | 
 |---|---|---|---|
 | run_id  | 	UUID | 	PRIMARY KEY	 | Unique pipeline run identifier | 
 | started_at | TIMESTAMPTZ	 | NOT NULL | 	Pipeline run start time | 
@@ -113,5 +113,5 @@ Column	Data type	Constraints	Description
 | records_processed	 | INTEGER | - | 	Nullable	Number of records processed | 
 | status | 	TEXT | 	NOT NULL | 	Run status, e.g. success or failed | 
 | message | 	TEXT | 	NOT NULL | 	Run summary or error message | 
-|---|---|---|---|
+
 Primary key: run_id
