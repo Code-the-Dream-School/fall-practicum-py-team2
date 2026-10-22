@@ -105,7 +105,7 @@ Primary key: (station_id, collected_at)
 
 ## logs
 The table contains pipeline logs
-| Column | Data type | 	Constraints	Description | 
+| Column | Data type | 	Constraints | 	Description | 
 |---|---|---|---|
 | run_id  | 	UUID | 	PRIMARY KEY	 | Unique pipeline run identifier | 
 | started_at | TIMESTAMPTZ	 | NOT NULL | 	Pipeline run start time | 
