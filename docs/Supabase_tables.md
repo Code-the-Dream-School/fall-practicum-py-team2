@@ -1,5 +1,6 @@
 # Supabase tables
 ## SQL Request
+```python
 CREATE TABLE IF NOT EXISTS stations_raw (
   station_id TEXT NOT NULL, 
   name TEXT, 
@@ -52,6 +53,8 @@ CREATE TABLE IF NOT EXISTS logs (
   status TEXT NOT NULL,
   message TEXT NOT NULL
 );
+```
+---
 The script is supposed to be run in the SQL editor of Supabase dashboard.
 
 ## stations_raw
