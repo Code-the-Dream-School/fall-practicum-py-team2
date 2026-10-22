@@ -1,3 +1,4 @@
+from datetime import datetime
 import functools
 import time
 import requests
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     stations = stations[stations["region_id"] == REGION_ID]
     stations = stations.drop(columns=['rental_uris', 'vehicle_types_available'])
     stations['last_reported'] = pd.to_datetime(stations['last_reported'], unit='s', utc=True).dt.tz_convert('America/Los_Angeles')
+    stations['collected_at'] = datetime.now()
     stations.to_json('./station_information.json', orient='records', date_format='iso', indent=2)
 
     # Collect and organize bike information

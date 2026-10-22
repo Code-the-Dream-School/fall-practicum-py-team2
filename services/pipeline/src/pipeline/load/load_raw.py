@@ -17,10 +17,12 @@ def load_raw(supabase, file_name, table_name):
                         .execute())
             if response.count > 0:
                 print(f"{response.count} rows upserted to {table_name}")
-            else:
+            elif response.count==0:
                 print("No new rows")
+            else:
+                response.raise_for_status
     except Exception as e:
-        e.raise_for_status
+        print("An error has occured:", e)
 
 # Main function cycles through existed JSON data and funnels it to the load_raw function.
 
@@ -30,6 +32,6 @@ if __name__ == "__main__":
     supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
     # Passes client and data to the load_raw function
-    load_raw(supabase, "../extract/station_information.json", "station_information")
+    load_raw(supabase, "../extract/station_information.json", "stations_raw")
     load_raw(supabase, "../extract/bike_information.json", "bike_information")
 
