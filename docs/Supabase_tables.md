@@ -56,28 +56,28 @@ The script is supposed to be run in the SQL editor of Supabase dashboard.
 
 ## stations_raw
 Table contains raw data from station_information.json
-Column	Data type	Constraints	Description
-station_id	TEXT	NOT NULL, part of Primary key	- Station identifier
-name	TEXT	—	Station name
-short_name	TEXT	—	Short station name
-lon	NUMERIC	NOT NULL -	Longitude
-lat	NUMERIC	NOT NULL -	Latitude
-region_id	TEXT	—	GBFS region identifier
-capacity	INTEGER	NOT NULL	-  Station capacity
-is_charging	BOOLEAN	—	Whether the station supports charging
-address	TEXT	—	Station address
-num_bikes_available	INTEGER	—	Number of available bikes
-num_bikes_disabled	INTEGER	—	Number of disabled bikes
-num_docks_available	INTEGER	—	Number of available docks
-num_docks_disabled	INTEGER	—	Number of disabled docks
-is_installed	BOOLEAN	—	Whether the station currently on the street
-is_renting	BOOLEAN	—	Whether the station currently renting vehicles
-is_returning	BOOLEAN	—	Whether the station accepting vehicle returns
-last_reported	TIMESTAMPTZ	NOT NULL -	The last time this station reported its status to the operator's backend.
-collected_at	TIMESTAMPTZ	NOT NULL, DEFAULT now(), part of Primary key -	Time the record was collected
-num_ebikes_available	INTEGER	—	Number of available e-bikes
-num_scooters_available	INTEGER	—	Number of available scooters
-num_scooters_unavailable	INTEGER	—	Number of unavailable scooters
+| Column |	Data type |	Constraints |	Description |
+| station_id | 	TEXT | 	NOT NULL, part of Primary key |  Station identifier | 
+| name  | 	TEXT  | 	—	 | Station name | 
+| short_name | 	TEXT | 	—	 | Short station name | 
+| lon | 	NUMERIC | 	NOT NULL  | 	Longitude | 
+| lat | 	NUMERIC | 	NOT NULL  | 	Latitude | 
+| region_id	 | TEXT	 | -  | 	GBFS region identifier | 
+| capacity | 	INTEGER | 	NOT NULL	 |   Station capacity | 
+| is_charging | 	BOOLEAN	 | - | 	Whether the station supports charging | 
+| address | 	TEXT | 	—	 | Station address | 
+| num_bikes_available | 	INTEGER	 | —	 | Number of available bikes | 
+| num_bikes_disabled | 	INTEGER	 | —	 | Number of disabled bikes | 
+| num_docks_available | 	INTEGER	 | —	 | Number of available docks | 
+| num_docks_disabled | 	INTEGER	 | —	 | Number of disabled docks | 
+| is_installed | 	BOOLEAN	 | —	 | Whether the station currently on the street | 
+| is_renting | 	BOOLEAN	 | — | 	Whether the station currently renting vehicles | 
+| is_returning | 	BOOLEAN	 | — | 	Whether the station accepting vehicle returns | 
+| last_reported | 	TIMESTAMPTZ	 | NOT NULL  | 	The last time this station reported its status to the operator's backend. | 
+| collected_at | 	TIMESTAMPTZ	 | NOT NULL, DEFAULT now(), part of Primary key  | 	Time the record was collected  | 
+| num_ebikes_available | 	INTEGER	 | — | 	Number of available e-bikes  | 
+| num_scooters_available | 	INTEGER	 | — | 	Number of available scooters | 
+| num_scooters_unavailable | 	INTEGER	 | — | 	Number of unavailable scooters | 
 Primary key: (station_id, collected_at)
 
 ## enriched_bks
