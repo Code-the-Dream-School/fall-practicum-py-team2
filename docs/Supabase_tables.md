@@ -86,7 +86,7 @@ Primary key: (station_id, collected_at)
 The table contains cleaned and enriched data
 | Column | 	Data type | Constraints | Description
 |---|---|---|---|
-| collected_at |  	TIMESTAMPTZ	NOT NULL, part of PK -	Time the record was collected (from raw data) | 
+| collected_at |  	TIMESTAMPTZ | 	NOT NULL, part of PK  | 	Time the record was collected (from raw data) | 
 | num_bikes_available | 	INTEGER	 | —	 | Total number of available bikes (total number of e-bikes and manual bikes available from raw data) | 
 | num_ebikes_available | 	INTEGER | 	— | 	Number of available e-bikes (from raw data) | 
 | num_manual_bikes_available | 	INTEGER	 | — | 	Available manual bikes (The difference between total number of bikes and number of e-bikes) | 
