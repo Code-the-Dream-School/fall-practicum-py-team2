@@ -5,24 +5,24 @@ CREATE TABLE IF NOT EXISTS stations_raw (
   station_id TEXT NOT NULL, 
   name TEXT, 
   short_name TEXT, 
-  lon numeric NOT NULL, 
-  lat numeric NOT NULL, 
+  lon NUMERIC NOT NULL, 
+  lat NUMERIC NOT NULL, 
   region_id TEXT, 
-  capacity INTEGER NOT NULL,
+  capacity NUMERIC NOT NULL,
   is_charging BOOLEAN, 
   address TEXT, 
-  num_bikes_available INTEGER, 
-  num_bikes_disabled INTEGER, 
-  num_docks_available INTEGER, 
-  num_docks_disabled INTEGER, 
+  num_bikes_available NUMERIC, 
+  num_bikes_disabled NUMERIC, 
+  num_docks_available NUMERIC, 
+  num_docks_disabled NUMERIC, 
   is_installed BOOLEAN, 
   is_renting BOOLEAN, 
   is_returning BOOLEAN, 
   last_reported TIMESTAMPTZ NOT NULL,
   collected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  num_ebikes_available INTEGER,
-  num_scooters_available INTEGER,
-  num_scooters_unavailable INTEGER,
+  num_ebikes_available NUMERIC,
+  num_scooters_available NUMERIC,
+  num_scooters_unavailable NUMERIC,
   PRIMARY KEY (station_id, collected_at)
 );
 
@@ -67,21 +67,21 @@ Table contains raw data from station_information.json
 | lon | 	NUMERIC | 	NOT NULL  | 	Longitude | 
 | lat | 	NUMERIC | 	NOT NULL  | 	Latitude | 
 | region_id	 | TEXT	 | -  | 	GBFS region identifier | 
-| capacity | 	INTEGER | 	NOT NULL	 |   Station capacity | 
+| capacity | 	NUMERIC | 	NOT NULL	 |   Station capacity | 
 | is_charging | 	BOOLEAN	 | - | 	Whether the station supports charging | 
 | address | 	TEXT | 	—	 | Station address | 
-| num_bikes_available | 	INTEGER	 | —	 | Number of available bikes | 
-| num_bikes_disabled | 	INTEGER	 | —	 | Number of disabled bikes | 
-| num_docks_available | 	INTEGER	 | —	 | Number of available docks | 
-| num_docks_disabled | 	INTEGER	 | —	 | Number of disabled docks | 
+| num_bikes_available | 	NUMERIC	 | —	 | Number of available bikes | 
+| num_bikes_disabled | 	NUMERIC	 | —	 | Number of disabled bikes | 
+| num_docks_available | 	NUMERIC	 | —	 | Number of available docks | 
+| num_docks_disabled | 	NUMERIC	 | —	 | Number of disabled docks | 
 | is_installed | 	BOOLEAN	 | —	 | Whether the station currently on the street | 
 | is_renting | 	BOOLEAN	 | — | 	Whether the station currently renting vehicles | 
 | is_returning | 	BOOLEAN	 | — | 	Whether the station accepting vehicle returns | 
 | last_reported | 	TIMESTAMPTZ	 | NOT NULL  | 	The last time this station reported its status to the operator's backend. | 
 | collected_at | 	TIMESTAMPTZ	 | NOT NULL, DEFAULT now(), part of Primary key  | 	Time the record was collected  | 
-| num_ebikes_available | 	INTEGER	 | — | 	Number of available e-bikes  | 
-| num_scooters_available | 	INTEGER	 | — | 	Number of available scooters | 
-| num_scooters_unavailable | 	INTEGER	 | — | 	Number of unavailable scooters | 
+| num_ebikes_available | 	NUMERIC	 | — | 	Number of available e-bikes  | 
+| num_scooters_available | 	NUMERIC	 | — | 	Number of available scooters | 
+| num_scooters_unavailable | 	NUMERIC	 | — | 	Number of unavailable scooters | 
 
 Primary key: (station_id, collected_at)
 
