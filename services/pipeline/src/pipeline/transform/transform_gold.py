@@ -24,7 +24,7 @@ def transform_and_load_to_gold():
     
     # 3. Download the raw tracking records Gaby is inserting
     print("Querying raw input logs straight from Supabase cloud database...")
-    response = supabase.table("station_information").select("*").execute()
+    response = supabase.table("stations_raw").select("*").execute()
     df = pd.DataFrame(response.data)
     
     if df.empty:
@@ -46,29 +46,29 @@ def transform_and_load_to_gold():
         df['last_reported'] = pd.to_datetime(df['last_reported'], errors='coerce')
 
     # 6. Derive Core Analytics Metric (The occupancy ratio score column)
-    df['total_capacity'] = df['num_bikes_available'] + df['num_docks_available']
-    df['score'] = np.where(df['total_capacity'] > 0, df['num_bikes_available'] / df['total_capacity'], 0.0)
-    df['score'] = df['score'].round(2)
-    
+    df['availability'] = np.where(df['capacity'] > 0, (df['num_bikes_available'] / df['capacity']) * 100, 0.0)
+    df['availability'] = df['availability'].round(2)
+
+
     # 7. Process Dynamic Rolling Aggregate Window Trends (3-period group average trend)
     if 'last_reported' in df.columns:
         df = df.sort_values(by=['station_id', 'last_reported'])
     else:
         df = df.sort_values(by=['station_id'])
         
-    df['rolling_avg_score'] = df.groupby('station_id')['score'].transform(
-        lambda x: x.rolling(window=3, min_periods=1).mean().round(2)
-    )
+    df['rolling_avg_score'] = df.groupby('station_id')['availability'].transform(
+    lambda x: x.rolling(window=3, min_periods=1).mean().round(2)
+)
 
     # 8. Derive Product Category Label Bounds (Availability Status classifications)
     conditions = [
-        (df['score'] == 0.00),
-        (df['score'] > 0.00) & (df['score'] <= 0.20),
-        (df['score'] > 0.20) & (df['score'] < 0.90),
-        (df['score'] >= 0.90)
+    (df['availability'] == 0.00),
+    (df['availability'] > 0.00) & (df['availability'] <= 0.20),
+    (df['availability'] > 0.20) & (df['availability'] < 0.90),
+    (df['availability'] >= 0.90)
     ]
     categories = ['empty', 'low', 'healthy', 'full']
-    df['category'] = np.select(conditions, categories, default='healthy')
+    df['availability_status'] = np.select(conditions, categories, default='healthy')
 
     # Convert last_reported timestamp rows to string formatting for clean JSON database storage serialization
     if 'last_reported' in df.columns:
@@ -81,8 +81,12 @@ def transform_and_load_to_gold():
     # Universal matrix filter: Replace any infinite or empty NaN values across columns with 0.0 or defaults
     df = df.replace([np.inf, -np.inf], np.nan)
     df['rolling_avg_score'] = df['rolling_avg_score'].fillna(0.0)
-    df = df.fillna(0.0)
-        
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    text_cols = df.select_dtypes(exclude=[np.number]).columns
+
+    df[numeric_cols] = df[numeric_cols].fillna(0.0)
+    df[text_cols] = df[text_cols].fillna("")
+
     # 10. Temporarily return the dataframe locally until KAN-13 (Alevtina's schema cache) is deployed live
     print("Data transformation complete! Summary of Gold Layer analytics:")
     return df
@@ -93,6 +97,6 @@ if __name__ == "__main__":
         gold_layer_df = transform_and_load_to_gold()
         if gold_layer_df is not None and not gold_layer_df.empty:
             print("\n Success! Previewing clean Gold analytics data rows:")
-            print(gold_layer_df[['station_id', 'name', 'score', 'rolling_avg_score', 'category']].head(10))
+        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status']].head(10))
     except Exception as e:
         print(f"\nPipeline execution failure details: {e}")
