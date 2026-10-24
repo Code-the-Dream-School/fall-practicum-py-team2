@@ -42,8 +42,8 @@ def transform_and_load_to_gold():
         df['num_bikes_available'] = pd.to_numeric(df.get('num_bikes_available', 0), errors='coerce').fillna(0).astype(int)
         df['num_docks_available'] = pd.to_numeric(df.get('num_docks_available', 0), errors='coerce').fillna(0).astype(int)
 
-    if 'last_reported' in df.columns:
-        df['last_reported'] = pd.to_datetime(df['last_reported'], errors='coerce')
+    if 'collected_at' in df.columns:
+        df['collected_at'] = pd.to_datetime(df['collected_at'], errors='coerce')
 
     # 6. Derive Core Analytics Metric (The occupancy ratio score column)
     df['availability'] = np.where(df['capacity'] > 0, (df['num_bikes_available'] / df['capacity']) * 100, 0.0)
@@ -51,8 +51,9 @@ def transform_and_load_to_gold():
 
 
     # 7. Process Dynamic Rolling Aggregate Window Trends (3-period group average trend)
-    if 'last_reported' in df.columns:
-        df = df.sort_values(by=['station_id', 'last_reported'])
+    if 'collected_at' in df.columns:
+        df = df.sort_values(by=['station_id', 'collected_at'])
+
     else:
         df = df.sort_values(by=['station_id'])
         
@@ -63,16 +64,17 @@ def transform_and_load_to_gold():
     # 8. Derive Product Category Label Bounds (Availability Status classifications)
     conditions = [
     (df['availability'] == 0.00),
-    (df['availability'] > 0.00) & (df['availability'] <= 0.20),
-    (df['availability'] > 0.20) & (df['availability'] < 0.90),
-    (df['availability'] >= 0.90)
+    (df['availability'] > 0.00) & (df['availability'] <= 20.00),
+    (df['availability'] > 20.00) & (df['availability'] < 90.00),
+    (df['availability'] >= 90.00)
     ]
     categories = ['empty', 'low', 'healthy', 'full']
     df['availability_status'] = np.select(conditions, categories, default='healthy')
 
     # Convert last_reported timestamp rows to string formatting for clean JSON database storage serialization
-    if 'last_reported' in df.columns:
-        df['last_reported'] = df['last_reported'].astype(str)
+    if 'collected_at' in df.columns:
+        df['collected_at'] = df['collected_at'].astype(str)
+
 
     # 9. Clean up temporary operational utility columns before final processing
     if 'total_capacity' in df.columns:
