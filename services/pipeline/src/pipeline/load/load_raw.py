@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import json
-from Path import pathlib
+from pathlib import Path
 import os
 from supabase import create_client
 
@@ -9,35 +9,33 @@ from supabase import create_client
 # This code runs the load_raw function twice, once for each table.
 
 def load_raw(supabase, file_path, table_name):
-    if file_path.exists():
-        try:
-            with open(file_path, "r") as file:
-                data = json.load(file)
-                response = (supabase
-                            .table(table_name)
-                            .upsert(data, count="exact")
-                            .execute())
-                if response.count > 0:
-                    print(f"{response.count} rows upserted to {table_name}")
-                elif response.count==0:
-                    print("No new rows")
-                else:
-                    response.raise_for_status
-        except Exception as e:
-            print("An error has occured:", e)
-    else:
-        print("No such file exists")
+    with open(file_path, "r") as file:
+        data = json.load(file)
+        if not data:
+            print(f"{file_path.name} is empty, nothing to load into {table_name}")
+            return 0
+        
+        response = (supabase
+                    .table(table_name)
+                    .upsert(data, count="exact")
+                    .execute())
+        print(f"{response.count} rows upserted to {table_name}")
+        return response.count
 
 # Main function cycles through existed JSON data and funnels it to the load_raw function.
 
 if __name__ == "__main__":
     # Creates the supabase client
     load_dotenv()
-    supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+    supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
     # Passes client and data to the load_raw function
-    station_path = Path("../extract/station_information.json")
-    bike_path = Path( "../extract/bike_information.json")
-    load_raw(supabase, station_path, "stations_raw")
-    load_raw(supabase, bike_path, "bike_information")
+    EXTRACT_DIR = Path(__file__).parent.parent / "extract"
+    station_path = EXTRACT_DIR / "station_information.json"
+    bike_path = EXTRACT_DIR / "bike_information.json"
+    try: 
+        rows_loaded = load_raw(supabase, station_path, "stations_raw")
+        rows_loaded += load_raw(supabase, bike_path, "bike_information")
+    except Exception as e:
+        raise 
 
