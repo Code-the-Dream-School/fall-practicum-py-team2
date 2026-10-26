@@ -75,6 +75,18 @@ def transform_and_load_to_gold():
     if 'collected_at' in df.columns:
         df['collected_at'] = df['collected_at'].astype(str)
 
+    # 8.5 Derive Richer Gold Fields: Calculate manual bike counts and proportional preference rental rates
+    # First, derive the number of manual bikes safely by subtracting ebikes from total available bikes
+    df['num_ebikes_available'] = pd.to_numeric(df.get('num_ebikes_available', 0), errors='coerce').fillna(0).astype(int)
+    df['num_manual_bikes_available'] = (df['num_bikes_available'] - df['num_ebikes_available']).clip(lower=0)
+
+    # Now calculate the preference rental rates without any missing column keys
+    df['bike_rent_rate'] = np.where(df['num_bikes_available'] > 0, (df['num_manual_bikes_available'] / df['num_bikes_available']) * 100, 0.0)
+    df['ebike_rent_rate'] = np.where(df['num_bikes_available'] > 0, (df['num_ebikes_available'] / df['num_bikes_available']) * 100, 0.0)
+    
+    df['bike_rent_rate'] = df['bike_rent_rate'].round(2)
+    df['ebike_rent_rate'] = df['ebike_rent_rate'].round(2)
+
 
     # 9. Clean up temporary operational utility columns before final processing
     if 'total_capacity' in df.columns:
@@ -99,6 +111,7 @@ if __name__ == "__main__":
         gold_layer_df = transform_and_load_to_gold()
         if gold_layer_df is not None and not gold_layer_df.empty:
             print("\n Success! Previewing clean Gold analytics data rows:")
-        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status']].head(10))
+            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
+
     except Exception as e:
         print(f"\nPipeline execution failure details: {e}")
