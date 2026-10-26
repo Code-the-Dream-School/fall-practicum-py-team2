@@ -53,10 +53,12 @@ def test_load_raw_empty_input(tmp_path):
     fake_supabase.table.return_value.upsert.return_value.execute.return_value.count = 0
     
     # Calling load_raw() function
-    load_raw(fake_supabase, str(file_path), "station_information")
-    
-    # Checking empty list was passed to upsert
-    fake_supabase.table.return_value.upsert.assert_called_once_with( [], count="exact" )
+    result = load_raw(fake_supabase, str(file_path), "station_information")
+
+    # Checking nothing was sent to Supabase and 0 rows were reported
+    assert result == 0
+
+    fake_supabase.table.return_value.upsert.assert_not_called()
 
 # checking the behavior of load_raw() when provided with a valid JSON file containing station records, and calling it twice
 def test_load_raw_twice(tmp_path):
