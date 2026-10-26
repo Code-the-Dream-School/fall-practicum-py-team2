@@ -306,3 +306,42 @@ def test_transform_missing_credentials():
             # Check that the function raises an error
             with pytest.raises(ValueError):
                 transform_and_load_to_gold()
+
+
+
+# Testing manual bike and e-bike percentages
+def test_transform_bike_and_ebike_rates():
+    # Create a fake Supabase connection
+    fake_supabase = MagicMock()
+
+    # Station with 10 bikes, including 4 e-bikes
+    stations = [
+        {
+            "station_id": "106",
+            "lat": 42.36,
+            "lon": -71.06,
+            "capacity": 20,
+            "num_bikes_available": 10,
+            "num_ebikes_available": 4,
+            "num_docks_available": 10,
+        }
+    ]
+
+    # Return sample data from our fake database
+    fake_supabase.table.return_value.select.return_value.execute.return_value.data = stations
+
+    # Using fake credentials and a fake connection
+    with patch.dict("os.environ", {
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_KEY": "fake-key",
+    }):
+        with patch(
+            "pipeline.transform.transform_gold.create_client",
+            return_value=fake_supabase,
+        ):
+            result = transform_and_load_to_gold()
+
+    # Check the calculated values
+    assert result["num_manual_bikes_available"].iloc[0] == 6
+    assert result["bike_rent_rate"].iloc[0] == 60.0
+    assert result["ebike_rent_rate"].iloc[0] == 40.0
