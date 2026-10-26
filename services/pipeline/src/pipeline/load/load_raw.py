@@ -32,4 +32,3 @@ if __name__ == "__main__":
     # Passes client and data to the load_raw function
     load_raw(supabase, "../extract/station_information.json", "station_information")
     load_raw(supabase, "../extract/bike_information.json", "bike_information")
-
