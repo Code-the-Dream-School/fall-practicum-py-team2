@@ -45,6 +45,13 @@ def transform_and_load_to_gold():
     if 'collected_at' in df.columns:
         df['collected_at'] = pd.to_datetime(df['collected_at'], errors='coerce')
 
+    # Safely handle num_ebikes_available whether the column exists or is completely missing
+    if 'num_ebikes_available' not in df.columns:
+        df['num_ebikes_available'] = 0
+    else:
+        df['num_ebikes_available'] = pd.to_numeric(df['num_ebikes_available'], errors='coerce').fillna(0).astype(int)
+        df['num_manual_bikes_available'] = (df['num_bikes_available'] - df['num_ebikes_available']).clip(lower=0)
+
     # 6. Derive Core Analytics Metric (The occupancy ratio score column)
     df['availability'] = np.where(df['capacity'] > 0, (df['num_bikes_available'] / df['capacity']) * 100, 0.0)
     df['availability'] = df['availability'].round(2)
