@@ -156,3 +156,5 @@ data/
 # Docker
 *.pid
 .tools/
+
+.DS_Store
