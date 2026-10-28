@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS enriched_bks (
   num_manual_bikes_available INTEGER,
   availability NUMERIC,
   availability_status TEXT,
+  relative_availability NUMERIC,
   capacity INTEGER NOT NULL,
   station_id TEXT NOT NULL, 
   name TEXT, 
@@ -96,6 +97,7 @@ The table contains cleaned and enriched data
 | capacity |  INTEGER  | NOT NULL	 |   Station capacity | 
 | availability | 	NUMERIC	 | — | 	Availability rate,  num_bikes_available / capacity * 100% | 
 | availability_status | 	TEXT | 	— | 	Availability status: empty (availability = 0), low (availability from 0 to 20), healthy (availability from 20 to 90), full (availability higher than 90) | 
+| relative_availability | NUMERIC | - | Shows how current availability compares with that station's average availability for the day. num_bikes_available / avg(num_bikes_available)
 | station_id | 	TEXT | 	NOT NULL, part of Primary key  | 	Station identifier | 
 | name | 	TEXT | 	— | 	Station name | 
 | short_name | 	TEXT	 | -  | 	Short station name | 
