@@ -1,12 +1,18 @@
-# Supabase tables
-## SQL Request
+# Supabase SQL Requests
+## SQL SCHEMAS
 ```python
-CREATE TABLE IF NOT EXISTS stations_raw (
+CREATE SCHEMA IF NOT EXISTS raw;
+CREATE SCHEMA IF NOT EXISTS gold;
+CREATE SCHEMA IF NOT EXISTS logs;
+```
+## SQL TABLES
+```python
+CREATE TABLE IF NOT EXISTS raw.stations_raw (
   station_id TEXT NOT NULL, 
   name TEXT, 
   short_name TEXT, 
-  lon NUMERIC NOT NULL, 
-  lat NUMERIC NOT NULL, 
+  lon numeric NOT NULL, 
+  lat numeric NOT NULL, 
   region_id TEXT, 
   capacity NUMERIC NOT NULL,
   is_charging BOOLEAN, 
@@ -26,26 +32,64 @@ CREATE TABLE IF NOT EXISTS stations_raw (
   PRIMARY KEY (station_id, collected_at)
 );
 
+CREATE TABLE  IF NOT EXISTS raw.bike_information(
+  bike_id                   VARCHAR(255),
+  lon                       FLOAT,
+  lat                       FLOAT,
+  is_reserved               INT,
+  is_disabled               INT,
+  current_range_meters      FLOAT,
+  vehicle_type_id           INT,
+  form_factor               VARCHAR(50),
+  propulsion_type           VARCHAR(50),
+  max_range_meters          FLOAT,
+  PRIMARY KEY (bike_id)
+);
 
-CREATE TABLE IF NOT EXISTS enriched_bks (
-  collected_at TIMESTAMPTZ NOT NULL,
-  num_bikes_available INTEGER,
-  num_ebikes_available INTEGER,
-  num_manual_bikes_available INTEGER,
-  availability NUMERIC,
-  availability_status TEXT,
-  capacity INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS gold.enriched_stations (
   station_id TEXT NOT NULL, 
   name TEXT, 
   short_name TEXT, 
   lon numeric NOT NULL, 
-  lat numeric NOT NULL,
+  lat numeric NOT NULL, 
+  region_id TEXT, 
+  capacity NUMERIC NOT NULL,
+  is_charging BOOLEAN, 
+  address TEXT, 
+  num_bikes_available NUMERIC, 
+  num_bikes_disabled NUMERIC, 
+  num_docks_available NUMERIC, 
+  num_docks_disabled NUMERIC, 
+  is_installed BOOLEAN, 
+  is_renting BOOLEAN, 
+  is_returning BOOLEAN, 
+  last_reported TIMESTAMPTZ NOT NULL,
+  collected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  num_ebikes_available NUMERIC,
+  num_scooters_available NUMERIC,
+  num_scooters_unavailable NUMERIC,
+  PRIMARY KEY (station_id, collected_at)
+);
+
+CREATE TABLE IF NOT EXISTS gold.enriched_bks (
+  collected_at TIMESTAMPTZ NOT NULL,
+  num_bikes_available INTEGER,
+  num_ebikes_available INTEGER,
+  num_manual_bikes_available INTEGER,
+  capacity INTEGER NOT NULL,
+  availability NUMERIC,
+  availability_status TEXT,
+  station_id TEXT NOT NULL, 
+  name TEXT, 
+  short_name TEXT, 
+  lon NUMERIC NOT NULL, 
+  lat NUMERIC NOT NULL,
   bike_rent_rate NUMERIC,
   ebike_rent_rate NUMERIC,
   PRIMARY KEY (station_id, collected_at)
 );
 
-CREATE TABLE IF NOT EXISTS logs (
+CREATE TABLE IF NOT EXISTS logs.pipeline_runs (
   run_id UUID PRIMARY KEY,
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ,
@@ -106,8 +150,8 @@ The table contains cleaned and enriched data
 
 Primary key: (station_id, collected_at)
 
-## logs
-The table contains pipeline logs
+## pipeline_runs
+The table contains pipeline runs
 | Column | Data type | 	Constraints | 	Description | 
 |---|---|---|---|
 | run_id  | 	UUID | 	PRIMARY KEY	 | Unique pipeline run identifier | 
