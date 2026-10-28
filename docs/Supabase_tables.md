@@ -1,12 +1,18 @@
-# Supabase tables
-## SQL Request
+# Supabase SQL Requests
+## SQL SCHEMAS
 ```python
-CREATE TABLE IF NOT EXISTS stations_raw (
+CREATE SCHEMA IF NOT EXISTS raw;
+CREATE SCHEMA IF NOT EXISTS gold;
+CREATE SCHEMA IF NOT EXISTS logs;
+```
+## SQL TABLES
+```python
+CREATE TABLE IF NOT EXISTS raw.stations_raw (
   station_id TEXT NOT NULL, 
   name TEXT, 
   short_name TEXT, 
-  lon NUMERIC NOT NULL, 
-  lat NUMERIC NOT NULL, 
+  lon numeric NOT NULL, 
+  lat numeric NOT NULL, 
   region_id TEXT, 
   capacity NUMERIC NOT NULL,
   is_charging BOOLEAN, 
@@ -26,30 +32,46 @@ CREATE TABLE IF NOT EXISTS stations_raw (
   PRIMARY KEY (station_id, collected_at)
 );
 
+CREATE TABLE  IF NOT EXISTS raw.bike_information(
+  bike_id                   VARCHAR(255),
+  lon                       FLOAT,
+  lat                       FLOAT,
+  is_reserved               INT,
+  is_disabled               INT,
+  current_range_meters      FLOAT,
+  vehicle_type_id           INT,
+  form_factor               VARCHAR(50),
+  propulsion_type           VARCHAR(50),
+  max_range_meters          FLOAT,
+  PRIMARY KEY (bike_id)
+);
 
-CREATE TABLE IF NOT EXISTS enriched_bks (
+CREATE TABLE IF NOT EXISTS gold.enriched_bks (
   collected_at TIMESTAMPTZ NOT NULL,
   num_bikes_available INTEGER,
   num_ebikes_available INTEGER,
   num_manual_bikes_available INTEGER,
+  capacity INTEGER NOT NULL,
   availability NUMERIC,
   availability_status TEXT,
-  capacity INTEGER NOT NULL,
   station_id TEXT NOT NULL, 
   name TEXT, 
   short_name TEXT, 
-  lon numeric NOT NULL, 
-  lat numeric NOT NULL,
+  lon NUMERIC NOT NULL, 
+  lat NUMERIC NOT NULL,
   bike_rent_rate NUMERIC,
   ebike_rent_rate NUMERIC,
   PRIMARY KEY (station_id, collected_at)
 );
 
-CREATE TABLE IF NOT EXISTS logs (
+CREATE TABLE IF NOT EXISTS logs.pipeline_runs (
   run_id UUID PRIMARY KEY,
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ,
-  records_processed INTEGER,
+  records_processed NUMERIC,
+  extracted NUMERIC NOT NULL,
+  loaded NUMERIC NOT NULL,
+  transformed NUMERIC NOT NULL,
   status TEXT NOT NULL,
   message TEXT NOT NULL
 );
@@ -106,13 +128,16 @@ The table contains cleaned and enriched data
 
 Primary key: (station_id, collected_at)
 
-## logs
-The table contains pipeline logs
+## pipeline_runs
+The table contains pipeline runs
 | Column | Data type | 	Constraints | 	Description | 
 |---|---|---|---|
 | run_id  | 	UUID | 	PRIMARY KEY	 | Unique pipeline run identifier | 
 | started_at | TIMESTAMPTZ	 | NOT NULL | 	Pipeline run start time | 
 | ended_at | 	TIMESTAMPTZ	 | -	 | Pipeline run completion time | 
+| extracted | NUMERIC | NOT NULL | total number of extracted columns |
+| loaded | NUMERIC| NOT NULL | number of new columns uploaded |
+| transformed | NUMERIC | NOT NULL | number of columns that have been transformed |
 | records_processed	 | INTEGER | - | 	Nullable	Number of records processed | 
 | status | 	TEXT | 	NOT NULL | 	Run status, e.g. success or failed | 
 | message | 	TEXT | 	NOT NULL | 	Run summary or error message | 
