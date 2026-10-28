@@ -97,7 +97,7 @@ The table contains cleaned and enriched data
 | capacity |  INTEGER  | NOT NULL	 |   Station capacity | 
 | availability | 	NUMERIC	 | — | 	Availability rate,  num_bikes_available / capacity * 100% | 
 | availability_status | 	TEXT | 	— | 	Availability status: empty (availability = 0), low (availability from 0 to 20), healthy (availability from 20 to 90), full (availability higher than 90) | 
-| relative_availability | NUMERIC | - | Shows how current availability compares with that station's average availability for the day.
+| relative_availability | NUMERIC | - | Shows how current availability compares with that station's average availability for the day. num_bikes_available / avg(num_bikes_available)
 | station_id | 	TEXT | 	NOT NULL, part of Primary key  | 	Station identifier | 
 | name | 	TEXT | 	— | 	Station name | 
 | short_name | 	TEXT	 | -  | 	Short station name | 
