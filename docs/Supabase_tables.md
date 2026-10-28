@@ -46,31 +46,6 @@ CREATE TABLE  IF NOT EXISTS raw.bike_information(
   PRIMARY KEY (bike_id)
 );
 
-CREATE TABLE IF NOT EXISTS gold.enriched_stations (
-  station_id TEXT NOT NULL, 
-  name TEXT, 
-  short_name TEXT, 
-  lon numeric NOT NULL, 
-  lat numeric NOT NULL, 
-  region_id TEXT, 
-  capacity NUMERIC NOT NULL,
-  is_charging BOOLEAN, 
-  address TEXT, 
-  num_bikes_available NUMERIC, 
-  num_bikes_disabled NUMERIC, 
-  num_docks_available NUMERIC, 
-  num_docks_disabled NUMERIC, 
-  is_installed BOOLEAN, 
-  is_renting BOOLEAN, 
-  is_returning BOOLEAN, 
-  last_reported TIMESTAMPTZ NOT NULL,
-  collected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  num_ebikes_available NUMERIC,
-  num_scooters_available NUMERIC,
-  num_scooters_unavailable NUMERIC,
-  PRIMARY KEY (station_id, collected_at)
-);
-
 CREATE TABLE IF NOT EXISTS gold.enriched_bks (
   collected_at TIMESTAMPTZ NOT NULL,
   num_bikes_available INTEGER,
@@ -93,7 +68,10 @@ CREATE TABLE IF NOT EXISTS logs.pipeline_runs (
   run_id UUID PRIMARY KEY,
   started_at TIMESTAMPTZ NOT NULL,
   ended_at TIMESTAMPTZ,
-  records_processed INTEGER,
+  records_processed NUMERIC,
+  extracted NUMERIC NOT NULL,
+  loaded NUMERIC NOT NULL,
+  transformed NUMERIC NOT NULL,
   status TEXT NOT NULL,
   message TEXT NOT NULL
 );
@@ -157,6 +135,9 @@ The table contains pipeline runs
 | run_id  | 	UUID | 	PRIMARY KEY	 | Unique pipeline run identifier | 
 | started_at | TIMESTAMPTZ	 | NOT NULL | 	Pipeline run start time | 
 | ended_at | 	TIMESTAMPTZ	 | -	 | Pipeline run completion time | 
+| extracted | NUMERIC | NOT NULL | total number of extracted columns |
+| loaded | NUMERIC| NOT NULL | number of new columns uploaded |
+| transformed | NUMERIC | NOT NULL | number of columns that have been transformed |
 | records_processed	 | INTEGER | - | 	Nullable	Number of records processed | 
 | status | 	TEXT | 	NOT NULL | 	Run status, e.g. success or failed | 
 | message | 	TEXT | 	NOT NULL | 	Run summary or error message | 
