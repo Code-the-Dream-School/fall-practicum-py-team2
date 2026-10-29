@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS logs.pipeline_runs (
   status TEXT NOT NULL,
   message TEXT NOT NULL
 );
+
+GRANT USAGE ON SCHEMA raw  TO service_role;
+GRANT USAGE ON SCHEMA gold TO service_role;
+GRANT USAGE ON SCHEMA logs TO service_role;
+
+GRANT ALL ON ALL TABLES IN SCHEMA raw  TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA gold TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA logs TO service_role;
 ```
 ---
 The script is supposed to be run in the SQL editor of Supabase dashboard.
