@@ -24,7 +24,7 @@ def transform_and_load_to_gold():
     
     # 3. Download the raw tracking records Gaby is inserting
     print("Querying raw input logs straight from Supabase cloud database...")
-    response = supabase.table("stations_raw").select("*").execute()
+    response = supabase.schema("raw").table("stations_raw").select("*").execute()
     df = pd.DataFrame(response.data)
     
     if df.empty:
