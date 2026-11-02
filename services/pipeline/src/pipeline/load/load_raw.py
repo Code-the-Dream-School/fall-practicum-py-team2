@@ -42,8 +42,7 @@ if __name__ == "__main__":
     station_path = EXTRACT_DIR / "station_information.json"
     bike_path = EXTRACT_DIR / "bike_information.json"
     try: 
-        rows_loaded = load_raw(supabase, station_path, "stations_raw")
-        rows_loaded += load_raw(supabase, bike_path, "bike_information", "bike_id")
+        rows_loaded = load_raw(supabase.schema("raw"), station_path, "stations_raw")
+        rows_loaded += load_raw(supabase.schema("raw"), bike_path, "bike_information", "bike_id")
     except Exception as e:
         raise 
-
