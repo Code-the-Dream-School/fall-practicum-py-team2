@@ -64,7 +64,7 @@ def test_transform_success(sample_stations):
     fake_supabase = MagicMock()
 
     # Making the fake database return our sample stations
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = sample_stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = sample_stations
 
     # Using fake credentials and a fake database connection
     with patch.dict("os.environ", {
@@ -124,7 +124,7 @@ def test_transform_missing_station_id():
     ]
 
     # Return invalid data from our fake database
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = invalid_stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = invalid_stations
 
     with patch.dict("os.environ", {
         "SUPABASE_URL": "https://example.supabase.co",
@@ -154,7 +154,7 @@ def test_transform_skips_missing_station_id(sample_stations):
     ## Combining 4 valid stations with 1 invalid station
     stations = sample_stations + [invalid_station]
 
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = stations
 
     with patch.dict("os.environ", {
         "SUPABASE_URL": "https://example.supabase.co",
@@ -188,7 +188,7 @@ def test_transform_skips_missing_lat(sample_stations):
     stations = sample_stations + [invalid_station]
 
     # Return our sample data from the fake database
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = stations
 
     with patch.dict("os.environ", {
         "SUPABASE_URL": "https://example.supabase.co",
@@ -223,7 +223,7 @@ def test_transform_invalid_bike_count():
     ]
 
     # Return the station from our fake database
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = invalid_stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = invalid_stations
 
     with patch.dict("os.environ", {
         "SUPABASE_URL": "https://example.supabase.co",
@@ -277,7 +277,7 @@ def test_transform_rolling_average():
     ]
 
     # Return our sample data from the fake database
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = stations
 
     with patch.dict("os.environ", {
         "SUPABASE_URL": "https://example.supabase.co",
@@ -328,7 +328,7 @@ def test_transform_bike_and_ebike_rates():
     ]
 
     # Return sample data from our fake database
-    fake_supabase.table.return_value.select.return_value.execute.return_value.data = stations
+    fake_supabase.schema.return_value.table.return_value.select.return_value.execute.return_value.data = stations
 
     # Using fake credentials and a fake connection
     with patch.dict("os.environ", {
