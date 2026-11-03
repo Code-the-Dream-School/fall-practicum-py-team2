@@ -67,6 +67,8 @@ def transform_and_load_to_gold():
     df['rolling_avg_score'] = df.groupby('station_id')['availability'].transform(
     lambda x: x.rolling(window=3, min_periods=1).mean().round(2)
 )
+    # Larrenz KAN-18: Calculate net change in available bikes since previous reading
+    df['bike_availability_change'] = df.groupby('station_id')['num_bikes_available'].diff().fillna(0).astype(int)
 
     # 8. Derive Product Category Label Bounds (Availability Status classifications)
     conditions = [
@@ -116,9 +118,10 @@ if __name__ == "__main__":
     print("Initiating live KAN-15 database analytics pipeline runtime execution...")
     try:
         gold_layer_df = transform_and_load_to_gold()
+        
         if gold_layer_df is not None and not gold_layer_df.empty:
             print("\n Success! Previewing clean Gold analytics data rows:")
-            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
+            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
 
     except Exception as e:
         print(f"\nPipeline execution failure details: {e}")

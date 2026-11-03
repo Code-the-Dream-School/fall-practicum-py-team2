@@ -133,6 +133,7 @@ The table contains cleaned and enriched data
 | lat | 	NUMERIC	 | NOT NULL	 | Latitude | 
 | bike_rent_rate | 	NUMERIC	 | 	-  | Manual-bike rental rate, num_manual_bikes_available / num_bikes_available * 100% | 
 | ebike_rent_rate | 	NUMERIC	 | -  | 	E-bike rental rate, num_ebikes_available / num_bikes_available * 100% | 
+| bike_availability_change | INTEGER | - | Calculates the net change in available bikes since the previous reading using a row-by-row window (`.diff()`). This helps users understand the immediate momentum of a station—whether it is rapidly emptying out or filling up between pipeline runs. |
 
 Primary key: (station_id, collected_at)
 
