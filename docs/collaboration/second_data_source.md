@@ -4,4 +4,4 @@ Our project explores how bike availability fluctuates at individual stations dur
 
 GTFS provides public transit stop locations and scheduled arrival and departure times. By combining this data with GBFS station locations and availability records, we could identify bike-share stations near transit hubs and investigate whether bike availability patterns coincide with transit schedules. This could help us understand the role of bike sharing in first- and last-mile commuting.
 
-Adding GTFS would require finding and downloading GTFS dataset with stop locations and schedules, and matching transit stops to nearby GBFS stations using geographic distance.
+Adding GTFS would require finding and downloading GTFS dataset with stop locations and schedules, and matching transit stops to nearby GBFS stations using geographic distance.  

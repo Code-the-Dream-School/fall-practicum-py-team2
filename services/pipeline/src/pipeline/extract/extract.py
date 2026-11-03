@@ -43,7 +43,7 @@ if __name__ == "__main__":
     stations = stations[stations["region_id"] == REGION_ID]
     stations = stations.drop(columns=['rental_uris', 'vehicle_types_available'])
     stations['last_reported'] = pd.to_datetime(stations['last_reported'], unit='s', utc=True).dt.tz_convert('America/Los_Angeles')
-    stations.to_csv('./station_information.csv', index=False)
+    stations.to_json('./station_information.json', orient='records', date_format='iso', indent=2)
 
     # Collect and organize bike information
     free_bike = pd.DataFrame(extract(feed_urls['free_bike_status'])['bikes'])
@@ -54,4 +54,4 @@ if __name__ == "__main__":
         & bikes['lon'].between(stations['lon'].min(), stations['lon'].max())
     )
     bikes = bikes[in_sf].drop(columns=['rental_uris'])
-    bikes.to_csv('./bike_information.csv', index=False)
+    bikes.to_json('./bike_information.json', orient='records', date_format='iso', indent=2)
