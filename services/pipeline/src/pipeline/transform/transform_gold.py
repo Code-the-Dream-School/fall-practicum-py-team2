@@ -20,6 +20,7 @@ def transform_and_load_to_gold():
         raise ValueError(" Missing database connection credentials. Please check .env file.")
         
     # 2. Establish live authenticated connection client to the cloud database
+    global supabase
     supabase = create_client(supabase_url, supabase_key)
     
     # 3. Download the raw tracking records Gaby is inserting
@@ -112,13 +113,46 @@ def transform_and_load_to_gold():
     print("Data transformation complete! Summary of Gold Layer analytics:")
     return df
 
+
+
 if __name__ == "__main__":
     print("Initiating live KAN-15 database analytics pipeline runtime execution...")
     try:
         gold_layer_df = transform_and_load_to_gold()
         if gold_layer_df is not None and not gold_layer_df.empty:
+<<<<<<< Updated upstream
             print("\n Success! Previewing clean Gold analytics data rows:")
             print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
+=======
+            print("\nSuccess! Previewing clean Gold analytics data rows:")
+            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
+            
+            print("\nLoading transformed data to Supabase 'gold.gold_bike_share_analytics' table...")
+            
+            # 1. List only the columns that exist in your Supabase table schema
+            db_columns = [
+                'station_id', 
+                'name', 
+                'availability', 
+                'rolling_avg_score', 
+                'availability_status', 
+                'num_bikes_available', 
+                'bike_availability_change', 
+                'collected_at'
+            ]
+            
+            # 2. Filter the dataframe down to only these valid schema fields
+            final_df = gold_layer_df[[col for col in db_columns if col in gold_layer_df.columns]]
+            
+            # 3. Convert the safe, filtered dataframe to dictionaries
+            records = final_df.to_dict(orient='records')
+     
+           # The execution call now passes only the valid schema records
+            db_response = supabase.schema("gold").table("gold_bike_share_analytics").insert(records).execute()
+            print(f"Successfully loaded {len(records)} records into 'gold.gold_bike_share_analytics'!")
+>>>>>>> Stashed changes
 
     except Exception as e:
         print(f"\nPipeline execution failure details: {e}")
+
+
