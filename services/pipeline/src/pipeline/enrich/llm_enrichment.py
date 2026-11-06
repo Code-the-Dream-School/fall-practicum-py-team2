@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 
+# Recording the LLM model and prompt version.
+MODEL_NAME = "not_configured"
+PROMPT_VERSION = "v1"
 
 # Function 1: Loading the LLM prompt and inserting the station name.
 def load_prompt(station_name: str) -> str:
@@ -91,12 +94,15 @@ def validate_llm_response(response_text: str) -> dict:
     }
 
 
+
+
 # Function 3: Enriching one bike station using an LLM.
 def enrich_station(station_name: str, llm_call) -> dict:
     """
     Preparing the prompt for a bike station.
     Calling the provided LLM function.
-    Validating and returning the enrichment results.
+    Validating the enrichment results.
+    Recording the model name and prompt version.
     """
 
     # Loading the prompt with the station name.
@@ -105,8 +111,15 @@ def enrich_station(station_name: str, llm_call) -> dict:
     # Sending the prompt to the LLM.
     response_text = llm_call(prompt)
 
-    # Validating and returning the LLM response.
-    return validate_llm_response(response_text)
+    # Validating the LLM response.
+    result = validate_llm_response(response_text)
+
+    # Recording the model and prompt version.
+    result["model_name"] = MODEL_NAME
+    result["prompt_version"] = PROMPT_VERSION
+
+    # Returning the enrichment result with metadata.
+    return result
 
 
 # Function 4: Enriching multiple bike stations and handling individual failures.
@@ -201,3 +214,34 @@ def get_pending_stations(stations: list, enriched_ids: set) -> list:
 
     # Returning only stations that still need enrichment.
     return pending
+
+
+# Processing only stations that still need LLM enrichment.
+def run_enrichment(supabase, llm_call, enrichment_table: str) -> dict:
+    """
+    Reading station records from the Gold Layer.
+    Checking previously enriched station IDs.
+    Selecting stations waiting for enrichment.
+    Processing the selected stations using the LLM.
+    Returning enrichment results and errors.
+    """
+    # Importing database functions.
+    from pipeline.enrich.enrichment_db import (
+        get_gold_stations,
+        get_enriched_station_ids,
+    )
+
+    # Reading station records from the Gold Layer.
+    stations = get_gold_stations(supabase)
+
+    # Reading previously enriched station IDs.
+    enriched_ids = get_enriched_station_ids(
+        supabase, enrichment_table
+    )
+
+    # Selecting only stations waiting for enrichment.
+    pending = get_pending_stations(stations, enriched_ids)
+
+    # Processing the selected stations.
+    return enrich_stations(pending, llm_call)
+
