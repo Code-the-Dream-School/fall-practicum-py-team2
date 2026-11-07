@@ -3,7 +3,9 @@ import json
 from pathlib import Path
 
 # Recording the LLM model and prompt version.
-MODEL_NAME = "not_configured"
+#MODEL_NAME = "not_configured"
+
+MODEL_NAME = "gpt-4o-mini"
 PROMPT_VERSION = "v1"
 
 # Function 1: Loading the LLM prompt and inserting the station name.
@@ -243,5 +245,90 @@ def run_enrichment(supabase, llm_call, enrichment_table: str) -> dict:
     pending = get_pending_stations(stations, enriched_ids)
 
     # Processing the selected stations.
-    return enrich_stations(pending, llm_call)
+    #return enrich_stations(pending, llm_call)
+    
+    # Importing the database saving function.
+    from pipeline.enrich.enrichment_db import save_enrichment
 
+    # Processing stations waiting for enrichment.
+    results = enrich_stations(pending, llm_call)
+
+   
+    
+    # Saving successfully enriched stations to Supabase.
+    for station_id, result in list(results["enriched"].items()):
+        try:
+            save_enrichment(supabase, station_id, result)
+
+        # Recording failed saves without stopping other stations.
+        except Exception as error:
+            results["errors"][station_id] = str(error)
+            del results["enriched"][station_id]
+
+
+    # # Returning the enrichment results and errors.
+    # return results
+    
+    # Importing the database error logging function.
+    from pipeline.enrich.enrichment_db import save_enrichment_error
+
+    # Saving each recorded enrichment error.
+    for station_id, error_message in results["errors"].items():
+        try:
+            save_enrichment_error(supabase, station_id, error_message)
+
+        # Handling logging failures without stopping the workflow.
+        except Exception as error:
+            print(f"Logging failed for station {station_id}: {error}")
+
+    # Returning the enrichment results and errors.
+    return results
+
+
+# Creating an OpenAI client using the environment API key.
+def get_openai_client():
+    # Loading environment variables from the .env file.
+    from dotenv import load_dotenv
+    from openai import OpenAI
+
+    load_dotenv()
+
+    # Creating and returning the OpenAI client.
+    return OpenAI()
+
+
+
+
+# Sending a station profiling prompt to OpenAI.
+def call_openai(prompt: str) -> str:
+    # Creating the OpenAI client.
+    client = get_openai_client()
+
+    # Requesting a structured JSON response from the model.
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "Returning only valid JSON for station profiling.",
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    # Returning the response text for validation.
+    return response.choices[0].message.content
+
+
+# Running station enrichment using the OpenAI model.
+def run_openai_enrichment(supabase):
+    # Running the existing workflow with the real OpenAI function.
+    return run_enrichment(
+        supabase,
+        call_openai,
+        "station_enrichments",
+    )

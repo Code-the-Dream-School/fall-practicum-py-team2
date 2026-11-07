@@ -66,3 +66,53 @@ def get_enriched_station_ids(supabase, table_name: str) -> set:
         for row in response.data
         if row.get("station_id")
     }
+
+
+
+# Saving one station's LLM enrichment result to Supabase.
+def save_enrichment(supabase, station_id: str, result: dict) -> None:
+    """
+    Preparing a station enrichment record.
+    Saving the record to the Gold Layer.
+    Avoiding duplicate records using station_id.
+    """
+    # Preparing the enrichment record.
+    record = {
+        "station_id": station_id,
+        "station_zone_profile": result["station_zone_profile"],
+        "commuter_density_impact": result["commuter_density_impact"],
+        "enrichment_summary": result["enrichment_summary"],
+        "model_name": result["model_name"],
+        "prompt_version": result["prompt_version"],
+    }
+
+    # Saving the record using station_id as the unique key.
+    (
+        supabase.schema("gold")
+        .table("station_enrichments")
+        .upsert(record, on_conflict="station_id")
+        .execute()
+    )
+
+
+
+# Recording a station's enrichment failure in Supabase.
+def save_enrichment_error(supabase, station_id: str, error_message: str) -> None:
+    """
+    Preparing an error record for a failed station.
+    Saving the error in the logs schema.
+    Recording the station ID and error message.
+    """
+    # Preparing the error record.
+    record = {
+        "station_id": station_id,
+        "error_message": error_message,
+    }
+
+    # Saving the error in the database.
+    (
+        supabase.schema("logs")
+        .table("enrichment_errors")
+        .insert(record)
+        .execute()
+    )
