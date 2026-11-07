@@ -126,27 +126,37 @@ if __name__ == "__main__":
             print("\nSuccess! Previewing clean Gold analytics data rows:")
             print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
             
-            print("\nLoading transformed data to Supabase 'gold.gold_bike_share_analytics' table...")
-            
+            print("\nUpserting transformed data to Supabase 'gold.enriched_bks' table...")            
             db_columns = [
+                'collected_at',
+                'num_bikes_available',
+                'num_ebikes_available',
+                'num_manual_bikes_available',
+                'capacity',
+                'availability',
+                'availability_status',
                 'station_id',
                 'name',
-                'availability',
-                'rolling_avg_score',
-                'availability_status',
-                'num_bikes_available',
-                'bike_availability_change',
-                'collected_at'
+                'short_name',
+                'lon',
+                'lat',
+                'bike_rent_rate',
+                'ebike_rent_rate'
             ]
             
             final_df = gold_layer_df[[col for col in db_columns if col in gold_layer_df.columns]]
             records = final_df.to_dict(orient='records')
             
-            db_response = supabase.schema("gold").table("gold_bike_share_analytics").insert(records).execute()
-            print(f"Successfully loaded {len(records)} records into 'gold.gold_bike_share_analytics'!")
+        db_response = (
+                        supabase.schema("gold")
+                        .table("enriched_bks")
+                        .upsert(records, on_conflict="station_id,collected_at")
+                        .execute()
+                    )            
+        print(f"Successfully loaded {len(records)} records into 'gold.enriched_bks'!")
 
 
-            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
+        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
 
 
     except Exception as e:
