@@ -37,7 +37,7 @@ def get_gold_stations(supabase) -> list:
     response = (
         supabase.schema("gold")
         .table("enriched_bks")
-        .select("station_id,name")
+        .select("station_id,name,lat,lon")
         .execute()
     )
 

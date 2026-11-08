@@ -57,10 +57,23 @@ def test_enrich_stations_duplicate_ids():
         )
 
     # Preparing two records with the same station ID.
+    
+    # Preparing two records with the same station ID and coordinates.
     stations = [
-        {"station_id": "S001", "name": "Broadway at Kearny St"},
-        {"station_id": "S001", "name": "Broadway at Kearny St"},
+        {
+            "station_id": "S001",
+            "name": "Broadway at Kearny St",
+            "lat": 37.7980,
+            "lon": -122.4050,
+        },
+        {
+            "station_id": "S001",
+            "name": "Broadway at Kearny St",
+            "lat": 37.7980,
+            "lon": -122.4050,
+        },
     ]
+
 
     # Enriching the station records.
     result = enrich_stations(stations, fake_llm)
@@ -71,6 +84,9 @@ def test_enrich_stations_duplicate_ids():
 
     # Confirming that the LLM is being called only once.
     assert len(calls) == 1
+        # Checking that the prompt includes station coordinates.
+    assert "Latitude: 37.798" in calls[0]
+    assert "Longitude: -122.405" in calls[0]
 
     # Confirming that no errors are being recorded.
     assert result["errors"] == {}
@@ -91,11 +107,29 @@ def test_enrich_stations_handles_errors():
         )
 
     # Preparing three stations for enrichment.
+    
+    # Preparing three stations with location coordinates.
     stations = [
-        {"station_id": "S001", "name": "Station One"},
-        {"station_id": "S002", "name": "Station Two"},
-        {"station_id": "S003", "name": "Station Three"},
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+        {
+            "station_id": "S002",
+            "name": "Station Two",
+            "lat": 37.7849,
+            "lon": -122.4094,
+        },
+        {
+            "station_id": "S003",
+            "name": "Station Three",
+            "lat": 37.7949,
+            "lon": -122.3994,
+        },
     ]
+
 
     # Processing the stations using the fake LLM.
     result = enrich_stations(stations, fake_llm)
@@ -143,7 +177,13 @@ def test_enrich_station_metadata():
         )
 
     # Enriching a station using the fake LLM.
-    result = enrich_station("Station One", fake_llm)
+    #result = enrich_station("Station One", fake_llm)
+    result = enrich_station(
+    "Station One",
+    37.7749,
+    -122.4194,
+    fake_llm
+)
 
     # Checking the recorded model and prompt version.
     assert result["model_name"] == MODEL_NAME
@@ -154,14 +194,26 @@ def test_enrich_station_metadata():
 
 
 # Testing the reading of Gold Layer stations.
+
+# Testing the retrieval of Gold stations with coordinates.
 def test_get_gold_stations():
     # Creating a fake Supabase client.
     fake_db = MagicMock()
 
-    # Preparing two fake station records.
+    # Preparing two fake station records with coordinates.
     stations = [
-        {"station_id": "S001", "name": "Station One"},
-        {"station_id": "S002", "name": "Station Two"},
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+        {
+            "station_id": "S002",
+            "name": "Station Two",
+            "lat": 37.7849,
+            "lon": -122.4094,
+        },
     ]
 
     # Simulating the database response.
@@ -173,6 +225,10 @@ def test_get_gold_stations():
     # Checking the returned station records.
     assert result == stations
 
+    # Checking that the query requests station coordinates.
+    fake_db.schema().table().select.assert_any_call(
+    "station_id,name,lat,lon"
+    )
 
 # Testing the reading of previously enriched station IDs.
 def test_get_enriched_station_ids():
@@ -206,11 +262,29 @@ def test_run_enrichment():
     fake_db = MagicMock()
 
     # Preparing Gold Layer station records.
+    
+    # Preparing Gold Layer station records with coordinates.
     stations = [
-        {"station_id": "S001", "name": "Station One"},
-        {"station_id": "S002", "name": "Station Two"},
-        {"station_id": "S003", "name": "Station Three"},
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+        {
+            "station_id": "S002",
+            "name": "Station Two",
+            "lat": 37.7849,
+            "lon": -122.4094,
+        },
+        {
+            "station_id": "S003",
+            "name": "Station Three",
+            "lat": 37.7949,
+            "lon": -122.3994,
+        },
     ]
+
 
     # Preparing previously enriched station IDs.
     existing = [
@@ -358,11 +432,34 @@ def test_run_enrichment_handles_save_failure():
     fake_db = MagicMock()
 
     # Preparing Gold Layer stations.
+    # stations = [
+    #     {"station_id": "S001", "name": "Station One"},
+    #     {"station_id": "S002", "name": "Station Two"},
+    #     {"station_id": "S003", "name": "Station Three"},
+    # ]
+    
+    # Preparing Gold Layer stations with coordinates.
     stations = [
-        {"station_id": "S001", "name": "Station One"},
-        {"station_id": "S002", "name": "Station Two"},
-        {"station_id": "S003", "name": "Station Three"},
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+        {
+            "station_id": "S002",
+            "name": "Station Two",
+            "lat": 37.7849,
+            "lon": -122.4094,
+        },
+        {
+            "station_id": "S003",
+            "name": "Station Three",
+            "lat": 37.7949,
+            "lon": -122.3994,
+        },
     ]
+
 
     # Creating reusable fake database tables.
     gold_table = MagicMock()
@@ -470,9 +567,16 @@ def test_run_enrichment_logs_llm_error():
     fake_db = MagicMock()
 
     # Preparing one station.
+    # stations = [
+    #     {"station_id": "S001", "name": "Station One"}
+    # ]
+    # Preparing one station with coordinates.
     stations = [
-        {"station_id": "S001", "name": "Station One"}
-    ]
+    {
+        "station_id": "S001",
+        "name": "Station One",
+        "lat": 37.7749,
+        "lon": -122.4194, }]
 
     # Creating fake database tables.
     gold_table = MagicMock()
@@ -522,7 +626,16 @@ def test_run_enrichment_handles_logging_failure():
     fake_db = MagicMock()
 
     # Preparing one Gold Layer station.
-    stations = [{"station_id": "S001", "name": "Station One"}]
+#    stations = [{"station_id": "S001", "name": "Station One"}]
+    
+    # Preparing one Gold Layer station with coordinates.
+    stations = [
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": 37.7749,
+            "lon": -122.4194, }]
+
 
     # Creating fake database tables.
     gold_table = MagicMock()

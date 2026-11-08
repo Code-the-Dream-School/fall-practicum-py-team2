@@ -9,10 +9,12 @@ MODEL_NAME = "gpt-4o-mini"
 PROMPT_VERSION = "v1"
 
 # Function 1: Loading the LLM prompt and inserting the station name.
-def load_prompt(station_name: str) -> str:
+
+# Loading the station profiling prompt with location information.
+def load_prompt(station_name: str, latitude: float, longitude: float) -> str:
     """
     Reading the prompt from a text file.
-    Replacing the placeholder with the station name.
+    Replacing the placeholders with station information.
     Returning the completed prompt.
     """
 
@@ -23,11 +25,14 @@ def load_prompt(station_name: str) -> str:
     with open(prompt_path, "r", encoding="utf-8") as file:
         prompt = file.read()
 
-    # Replacing the placeholder with the station name.
-    return prompt.replace("{station_name}", station_name)
+    # Replacing the placeholders with station information.
+    prompt = prompt.replace("{station_name}", station_name)
+    prompt = prompt.replace("{latitude}", str(latitude))
+    prompt = prompt.replace("{longitude}", str(longitude))
 
+    # Returning the completed prompt.
+    return prompt
 
-# Function 2: Validating the LLM response and handling invalid values.
 def validate_llm_response(response_text: str) -> dict:
     """
     Converting the JSON response into a Python dictionary.
@@ -99,16 +104,23 @@ def validate_llm_response(response_text: str) -> dict:
 
 
 # Function 3: Enriching one bike station using an LLM.
-def enrich_station(station_name: str, llm_call) -> dict:
+
+# Enriching a bike station using its name and coordinates.
+def enrich_station(
+    station_name: str,
+    latitude: float,
+    longitude: float,
+    llm_call
+) -> dict:
     """
-    Preparing the prompt for a bike station.
+    Preparing the prompt with station location information.
     Calling the provided LLM function.
     Validating the enrichment results.
     Recording the model name and prompt version.
     """
 
-    # Loading the prompt with the station name.
-    prompt = load_prompt(station_name)
+    # Loading the prompt with the station name and coordinates.
+    prompt = load_prompt(station_name, latitude, longitude)
 
     # Sending the prompt to the LLM.
     response_text = llm_call(prompt)
@@ -125,10 +137,12 @@ def enrich_station(station_name: str, llm_call) -> dict:
 
 
 # Function 4: Enriching multiple bike stations and handling individual failures.
+
+# Enriching multiple bike stations using their location information.
 def enrich_stations(stations: list, llm_call) -> dict:
     """
     Processing multiple bike stations using the LLM.
-    Skipping duplicate station IDs and missing station names.
+    Skipping duplicate station IDs and missing station information.
     Recording errors without stopping the remaining stations.
     """
 
@@ -145,6 +159,8 @@ def enrich_stations(stations: list, llm_call) -> dict:
     for station in stations:
         station_id = station.get("station_id")
         station_name = station.get("name")
+        latitude = station.get("lat")
+        longitude = station.get("lon")
 
         # Skipping stations with missing IDs or invalid names.
         if (
@@ -162,7 +178,15 @@ def enrich_stations(stations: list, llm_call) -> dict:
 
         # Calling the LLM and recording the enrichment result.
         try:
-            result = enrich_station(station_name, llm_call)
+            if latitude is None or longitude is None:
+                raise ValueError("Missing station coordinates")
+
+            result = enrich_station(
+                station_name,
+                latitude,
+                longitude,
+                llm_call
+            )
             enriched[station_id] = result
 
         # Recording errors while continuing with the next station.
@@ -174,7 +198,6 @@ def enrich_stations(stations: list, llm_call) -> dict:
         "enriched": enriched,
         "errors": errors,
     }
-
 
 
 # Function 5: Selecting stations that still need LLM enrichment.

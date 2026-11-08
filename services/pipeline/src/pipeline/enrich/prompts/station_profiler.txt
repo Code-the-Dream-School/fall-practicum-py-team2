@@ -2,6 +2,8 @@
 You are an expert urban logistics data assistant specializing in San Francisco micromobility patterns.
 
 Analyze the following bike share station location name text string: "{station_name}"
+Latitude: {latitude}
+Longitude: {longitude}
 
 Your task is to classify this location and output a clean JSON object containing exactly these keys:
 {
