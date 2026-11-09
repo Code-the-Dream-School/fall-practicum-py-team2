@@ -739,3 +739,104 @@ def test_run_openai_enrichment():
 
     # Checking that the workflow result is returned.
     assert result == expected_result
+
+
+
+# Testing that missing coordinates do not stop other stations.
+def test_enrich_stations_missing_coordinates():
+    # Tracking successful LLM calls.
+    calls = []
+
+    # Simulating a successful LLM response.
+    def fake_llm(prompt):
+        calls.append(prompt)
+        return (
+            '{"station_zone_profile": "transit_hub", '
+            '"commuter_density_impact": "high", '
+            '"enrichment_summary": "Near public transportation."}'
+        )
+
+    # Preparing one invalid station and one valid station.
+    stations = [
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": None,
+            "lon": None,
+        },
+        {
+            "station_id": "S002",
+            "name": "Station Two",
+            "lat": 37.7749,
+            "lon": -122.4194,
+        },
+    ]
+
+    # Processing both stations.
+    result = enrich_stations(stations, fake_llm)
+
+    # Checking that the invalid station records an error.
+    assert result["errors"]["S001"] == "Missing station coordinates"
+
+    # Checking that the valid station is still enriched.
+    assert "S002" in result["enriched"]
+
+    # Checking that the LLM is called only for the valid station.
+    assert len(calls) == 1
+
+
+# Testing that missing coordinates are sent to error logging.
+def test_run_enrichment_logs_missing_coordinates():
+    # Creating a fake Supabase client.
+    fake_db = MagicMock()
+
+    # Preparing a station without coordinates.
+    stations = [
+        {
+            "station_id": "S001",
+            "name": "Station One",
+            "lat": None,
+            "lon": None,
+        }
+    ]
+
+    # Creating fake database tables.
+    gold_table = MagicMock()
+    enrichment_table = MagicMock()
+
+    # Simulating database responses.
+    gold_table.select().execute().data = stations
+    enrichment_table.select().execute().data = []
+
+    # Selecting the correct fake table.
+    def fake_table(table_name):
+        if table_name == "enriched_bks":
+            return gold_table
+        if table_name == "station_enrichments":
+            return enrichment_table
+        raise ValueError("Unexpected table name")
+
+    fake_db.schema.return_value.table.side_effect = fake_table
+
+    # Simulating an LLM response that should never be needed.
+    fake_llm = MagicMock()
+
+    # Mocking the database error logging function.
+    with patch(
+        "pipeline.enrich.enrichment_db.save_enrichment_error"
+    ) as mock_log:
+        # Running the enrichment workflow.
+        result = run_enrichment(
+            fake_db, fake_llm, "station_enrichments"
+        )
+
+        # Checking that the missing coordinates error is logged.
+        mock_log.assert_called_once_with(
+            fake_db, "S001", "Missing station coordinates"
+        )
+
+    # Checking that the error is returned.
+    assert result["errors"]["S001"] == "Missing station coordinates"
+
+    # Checking that the LLM is not called.
+    fake_llm.assert_not_called()
