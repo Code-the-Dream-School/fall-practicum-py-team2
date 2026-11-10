@@ -1,0 +1,357 @@
+
+import json
+from pathlib import Path
+
+# Recording the LLM model and prompt version.
+#MODEL_NAME = "not_configured"
+
+MODEL_NAME = "gpt-4o-mini"
+PROMPT_VERSION = "v1"
+
+# Function 1: Loading the LLM prompt and inserting the station name.
+
+# Loading the station profiling prompt with location information.
+def load_prompt(station_name: str, latitude: float, longitude: float) -> str:
+    """
+    Reading the prompt from a text file.
+    Replacing the placeholders with station information.
+    Returning the completed prompt.
+    """
+
+    # Finding the prompt file.
+    prompt_path = Path(__file__).parent / "prompts" / "station_profiler.txt"
+
+    # Opening the file and reading the instructions.
+    with open(prompt_path, "r", encoding="utf-8") as file:
+        prompt = file.read()
+
+    # Replacing the placeholders with station information.
+    prompt = prompt.replace("{station_name}", station_name)
+    prompt = prompt.replace("{latitude}", str(latitude))
+    prompt = prompt.replace("{longitude}", str(longitude))
+
+    # Returning the completed prompt.
+    return prompt
+
+def validate_llm_response(response_text: str) -> dict:
+    """
+    Converting the JSON response into a Python dictionary.
+    Checking the values against the KAN-23 contract.
+    Applying fallback values when needed.
+    """
+
+    # Defining default values for invalid responses.
+    defaults = {
+        "station_zone_profile": "commercial_district",
+        "commuter_density_impact": "moderate",
+        "enrichment_summary": (
+            "Fallback: Location profile generated "
+            "due to malformed LLM response string."
+        ),
+    }
+
+    # Converting JSON text into a Python dictionary.
+    try:
+        result = json.loads(response_text)
+
+    # Handling malformed JSON.
+    except (json.JSONDecodeError, TypeError):
+        return defaults.copy()
+
+    # Checking whether the response is a dictionary.
+    if not isinstance(result, dict):
+        return defaults.copy()
+
+    # Defining the allowed station categories.
+    allowed_zones = {
+        "transit_hub",
+        "commercial_district",
+        "residential_neighborhood",
+        "recreational_park",
+    }
+
+    # Defining the allowed commuter density values.
+    allowed_density = {"high", "moderate", "low"}
+
+    # Getting and checking the station category.
+    zone = result.get("station_zone_profile")
+
+    if not isinstance(zone, str) or not zone.strip():
+        zone = defaults["station_zone_profile"]
+    elif zone not in allowed_zones:
+        zone = "recreational_park"
+
+    # Getting and checking the commuter density.
+    density = result.get("commuter_density_impact")
+
+    if density not in allowed_density:
+        density = defaults["commuter_density_impact"]
+
+    # Getting and checking the enrichment summary.
+    summary = result.get("enrichment_summary")
+
+    if not isinstance(summary, str) or not summary.strip():
+        summary = defaults["enrichment_summary"]
+
+    # Returning the validated fields and limiting the summary length.
+    return {
+        "station_zone_profile": zone,
+        "commuter_density_impact": density,
+        "enrichment_summary": summary[:150],
+    }
+
+
+
+
+# Function 3: Enriching one bike station using an LLM.
+
+# Enriching a bike station using its name and coordinates.
+def enrich_station(
+    station_name: str,
+    latitude: float,
+    longitude: float,
+    llm_call
+) -> dict:
+    """
+    Preparing the prompt with station location information.
+    Calling the provided LLM function.
+    Validating the enrichment results.
+    Recording the model name and prompt version.
+    """
+
+    # Loading the prompt with the station name and coordinates.
+    prompt = load_prompt(station_name, latitude, longitude)
+
+    # Sending the prompt to the LLM.
+    response_text = llm_call(prompt)
+
+    # Validating the LLM response.
+    result = validate_llm_response(response_text)
+
+    # Recording the model and prompt version.
+    result["model_name"] = MODEL_NAME
+    result["prompt_version"] = PROMPT_VERSION
+
+    # Returning the enrichment result with metadata.
+    return result
+
+
+# Function 4: Enriching multiple bike stations and handling individual failures.
+
+# Enriching multiple bike stations using their location information.
+def enrich_stations(stations: list, llm_call) -> dict:
+    """
+    Processing multiple bike stations using the LLM.
+    Skipping duplicate station IDs and missing station information.
+    Recording errors without stopping the remaining stations.
+    """
+
+    # Creating a dictionary for successful enrichment results.
+    enriched = {}
+
+    # Creating a dictionary for stations that failed.
+    errors = {}
+
+    # Tracking station IDs already processed in this batch.
+    seen_ids = set()
+
+    # Processing each station from the input list.
+    for station in stations:
+        station_id = station.get("station_id")
+        station_name = station.get("name")
+        latitude = station.get("lat")
+        longitude = station.get("lon")
+
+        # Skipping stations with missing IDs or invalid names.
+        if (
+            not station_id
+            or not isinstance(station_name, str)
+            or not station_name.strip()
+        ):
+            continue
+
+        # Skipping repeated station IDs within the same batch.
+        if station_id in seen_ids:
+            continue
+
+        seen_ids.add(station_id)
+
+        # Calling the LLM and recording the enrichment result.
+        try:
+            if latitude is None or longitude is None:
+                raise ValueError("Missing station coordinates")
+
+            result = enrich_station(
+                station_name,
+                latitude,
+                longitude,
+                llm_call
+            )
+            enriched[station_id] = result
+
+        # Recording errors while continuing with the next station.
+        except Exception as error:
+            errors[station_id] = str(error)
+
+    # Returning successful results and recorded errors.
+    return {
+        "enriched": enriched,
+        "errors": errors,
+    }
+
+
+# Function 5: Selecting stations that still need LLM enrichment.
+def get_pending_stations(stations: list, enriched_ids: set) -> list:
+    """
+    Checking which stations have already been enriched.
+    Selecting only new stations for LLM processing.
+    Skipping duplicate station IDs and invalid names.
+    """
+
+    # Creating a list for stations waiting for enrichment.
+    pending = []
+
+    # Tracking station IDs already selected in this batch.
+    seen_ids = set()
+
+    # Checking each station from the input list.
+    for station in stations:
+        station_id = station.get("station_id")
+        station_name = station.get("name")
+
+        # Skipping stations with missing IDs or invalid names.
+        if (
+            not station_id
+            or not isinstance(station_name, str)
+            or not station_name.strip()
+        ):
+            continue
+
+        # Skipping stations already enriched or already selected.
+        if station_id in enriched_ids or station_id in seen_ids:
+            continue
+
+        # Recording the station ID to prevent duplicates.
+        seen_ids.add(station_id)
+
+        # Adding the station to the pending list.
+        pending.append(station)
+
+    # Returning only stations that still need enrichment.
+    return pending
+
+
+# Processing only stations that still need LLM enrichment.
+def run_enrichment(supabase, llm_call, enrichment_table: str) -> dict:
+    """
+    Reading station records from the Gold Layer.
+    Checking previously enriched station IDs.
+    Selecting stations waiting for enrichment.
+    Processing the selected stations using the LLM.
+    Returning enrichment results and errors.
+    """
+    # Importing database functions.
+    from pipeline.enrich.enrichment_db import (
+        get_gold_stations,
+        get_enriched_station_ids,
+    )
+
+    # Reading station records from the Gold Layer.
+    stations = get_gold_stations(supabase)
+
+    # Reading previously enriched station IDs.
+    enriched_ids = get_enriched_station_ids(
+        supabase, enrichment_table
+    )
+
+    # Selecting only stations waiting for enrichment.
+    pending = get_pending_stations(stations, enriched_ids)
+
+    # Processing the selected stations.
+    #return enrich_stations(pending, llm_call)
+    
+    # Importing the database saving function.
+    from pipeline.enrich.enrichment_db import save_enrichment
+
+    # Processing stations waiting for enrichment.
+    results = enrich_stations(pending, llm_call)
+
+   
+    
+    # Saving successfully enriched stations to Supabase.
+    for station_id, result in list(results["enriched"].items()):
+        try:
+            save_enrichment(supabase, station_id, result)
+
+        # Recording failed saves without stopping other stations.
+        except Exception as error:
+            results["errors"][station_id] = str(error)
+            del results["enriched"][station_id]
+
+
+    # # Returning the enrichment results and errors.
+    # return results
+    
+    # Importing the database error logging function.
+    from pipeline.enrich.enrichment_db import save_enrichment_error
+
+    # Saving each recorded enrichment error.
+    for station_id, error_message in results["errors"].items():
+        try:
+            save_enrichment_error(supabase, station_id, error_message)
+
+        # Handling logging failures without stopping the workflow.
+        except Exception as error:
+            print(f"Logging failed for station {station_id}: {error}")
+
+    # Returning the enrichment results and errors.
+    return results
+
+
+# Creating an OpenAI client using the environment API key.
+def get_openai_client():
+    # Loading environment variables from the .env file.
+    from dotenv import load_dotenv
+    from openai import OpenAI
+
+    load_dotenv()
+
+    # Creating and returning the OpenAI client.
+    return OpenAI()
+
+
+
+
+# Sending a station profiling prompt to OpenAI.
+def call_openai(prompt: str) -> str:
+    # Creating the OpenAI client.
+    client = get_openai_client()
+
+    # Requesting a structured JSON response from the model.
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "Returning only valid JSON for station profiling.",
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    # Returning the response text for validation.
+    return response.choices[0].message.content
+
+
+# Running station enrichment using the OpenAI model.
+def run_openai_enrichment(supabase):
+    # Running the existing workflow with the real OpenAI function.
+    return run_enrichment(
+        supabase,
+        call_openai,
+        "station_enrichments",
+    )
