@@ -75,16 +75,29 @@ df["text"] = ("<br>Ebikes:" + df['num_ebikes_available'].astype(str) +
 if "enrichment_summary" in df.columns:
     df["text"] += "<br>LLM Summary: " + df["enrichment_summary"]
 
-map_fig = px.scatter_mapbox(df,
-                      lon = df["lon"],
-                      lat = df["lat"],
-                      hover_name="name",
-                      text = df['text'],
-                      color = df['num_bikes_available'],
-                      color_continuous_scale="Viridis",
-                      mapbox_style="carto-positron",
-                      zoom=11
-                      )
+try:
+    # use the modern Plotly 7.0+ method
+    map_fig = px.scatter_map(df,
+        lon = df["lon"],
+        lat = df["lat"],
+        hover_name="name",
+        text = df['text'],
+        color = df['num_bikes_available'],
+        color_continuous_scale="Viridis",
+        zoom=11
+    )
+except AttributeError:
+    # Legacy fallback for Plotly 5.x/6.x environments
+    map_fig = px.scatter_mapbox(df,
+        lon=df["lon"],
+        lat=df["lat"],
+        hover_name="name",
+        text=df['text'],
+        color=df['num_bikes_available'],
+        color_continuous_scale="Viridis",
+        mapbox_style="carto-positron",
+        zoom=11
+    )
 
 st.plotly_chart(map_fig)
 
