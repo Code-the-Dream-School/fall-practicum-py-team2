@@ -5,13 +5,13 @@ import pandas as pd
 import plotly.express as px
 from supabase import create_client
 
-# KAN-29 POLISH: Set wider responsive page layout config on script boot
+# Dashboard POLISH: Set wider responsive page layout config on script boot
 st.set_page_config(page_title="Bay Area Bike Rental Analytics", layout="wide")
 
 # Fetch Data
 load_dotenv()
 
-# KAN-29: Wrap raw queries inside an explicit
+# Wrap raw queries inside an explicit
 # try-except guard block to intercept missing keys or database drops safely.
 
 try:
@@ -28,6 +28,17 @@ try:
         st.stop()
     df = pd.DataFrame(response.data)
 
+    # Fetch LLM enrichment table and left-join with enriched_bks on station_id
+    enrich_response = (supabase
+                       .schema("gold")
+                       .table("station_enrichments")
+                       .select("station_id, station_zone_profile, commuter_density_impact, enrichment_summary")
+                       .execute())
+    
+    if enrich_response.data:
+        enrich_df = pd.DataFrame(enrich_response.data)
+        df = df.merge(enrich_df, on="station_id", how="left")
+
 except Exception as e:
     st.error("Data Source Connection Failure")
     st.info(f"Could not connect to Supabase backend: {e}")
@@ -39,7 +50,7 @@ st.write("Our project looks at bike rental data in the Bay Area. " \
 "By using Lyft's API we can see how many bikes are being rented/returned, including both manual and ebikes. " \
 "The data also shows which stations are the most used, and at what times of day.")
 
-# KAN-29 ADVANCED INTERACTIVE FILTERS: Inject structural sidebar filtering
+# ADVANCED INTERACTIVE FILTERS: Inject structural sidebar filtering
 # blocks to isolate live runtime evaluation metrics against new LLM properties.
 # Availibility Map
 
@@ -47,10 +58,11 @@ st.sidebar.header("🔍 Enrichment Filtering Matrix")
 zone_col = "station_zone_profile"
 density_col = "commuter_density_impact"
 
-# Verify if KAN-24 LLM properties are actively populated inside the target table relation
 if zone_col in df.columns and density_col in df.columns:
-    available_zones = ["All Zones"] + sorted([z for z in df[zone_col].unique() if z])
-    available_densities = ["All Impact Levels"] + sorted([d for d in df[density_col].unique() if d])
+
+    # Added .dropna() so un-enriched stations (NaN) don't cause a float vs. string TypeError during sorting
+    available_zones = ["All Zones"] + sorted([z for z in df[zone_col].dropna().unique() if z])
+    available_densities = ["All Impact Levels"] + sorted([d for d in df[density_col].dropna().unique() if d])    
     
     selected_zone = st.sidebar.selectbox("Filter by Station Zone:", available_zones)
     selected_density = st.sidebar.selectbox("Filter by Commuter Impact:", available_densities)
@@ -61,19 +73,21 @@ if zone_col in df.columns and density_col in df.columns:
     if selected_density != "All Impact Levels":
         df = df[df[density_col] == selected_density]
 else:
-    st.sidebar.warning("💡 LLM enrichment fields not populated yet. Showing base charts.")
+    st.sidebar.warning(" LLM enrichment fields not populated yet. Showing base charts.")
 
 # Availability Map
 st.subheader('Bike Map')
-# KAN-29 TOOLTIP POLISH: Safely check for and append the enrichment summaries
-# right where it makes sense inside the map hover configurations.
+# TOOLTIP POLISH: Safely check for and append the enrichment summaries right where it makes sense inside the map hover configurations.
 
 df["text"] = ("<br>Ebikes:" + df['num_ebikes_available'].astype(str) + 
               "<br>Manual Bikes:" + 
               df['num_manual_bikes_available'].astype(str))
 
+# Safely fillna("") before concatenating strings so un-enriched stations don't crash or display 'NaN' in the map hover tooltip
+
 if "enrichment_summary" in df.columns:
-    df["text"] += "<br>LLM Summary: " + df["enrichment_summary"]
+    summaries = df["enrichment_summary"].fillna("Not yet enriched")
+    df["text"] += "<br>LLM Summary: " + summaries.astype(str)
 
 try:
     # use the modern Plotly 7.0+ method
@@ -118,7 +132,7 @@ bottom_roll = sorted_df[sorted_df['rolling_avg_score'] > 0].nsmallest(10, 'rolli
 
 with col1:
         st.subheader('Top Rolling Averages')
-        # KAN-29 BUG PATCH: Removed buggy hardcoded hex sequences to resolve
+        # BUG PATCH: Removed buggy hardcoded hex sequences to resolve
         # syntax compilation crashes. Plotly default rendering handles native keys seamlessly.
 
         top_fig = px.bar(
