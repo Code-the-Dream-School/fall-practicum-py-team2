@@ -30,8 +30,8 @@ def cache_clear():
     _cached_extract.cache_clear()
 
 
-# LARRENZ: added a main() function 
-if __name__ == "__main__":
+# LARRENZ: changed from __main__ block to a callable function for Prefect
+def run_extract():
     # Get dictionary of URLS
     main_feed = cached_extract(BASE_URL)['en']['feeds']
     feed_urls = {feed['name']: feed['url'] for feed in main_feed}
