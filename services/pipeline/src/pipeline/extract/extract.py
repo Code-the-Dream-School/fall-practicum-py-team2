@@ -30,8 +30,8 @@ def cache_clear():
     _cached_extract.cache_clear()
 
 
-# LARRENZ: added a main() function 
-if __name__ == "__main__":
+# LARRENZ: changed from __main__ block to a callable function for Prefect
+def run_extract():
     # Get dictionary of URLS
     main_feed = cached_extract(BASE_URL)['en']['feeds']
     feed_urls = {feed['name']: feed['url'] for feed in main_feed}
@@ -55,3 +55,5 @@ if __name__ == "__main__":
     )
     bikes = bikes[in_sf].drop(columns=['rental_uris'])
     bikes.to_json('./bike_information.json', orient='records', date_format='iso', indent=2)
+
+    return (len(stations), len(bikes))

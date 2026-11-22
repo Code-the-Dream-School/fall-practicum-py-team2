@@ -111,55 +111,30 @@ def transform_and_load_to_gold():
     df[numeric_cols] = df[numeric_cols].fillna(0.0)
     df[text_cols] = df[text_cols].fillna("")
 
-    # 10. Temporarily return the dataframe locally until KAN-13 (Alevtina's schema cache) is deployed live
+    # 10. Upsert to Supabase (added by Gaby)
+    GOLD_COLUMNS = ["collected_at", "station_id", "name", "short_name", "lat", "lon", "capacity",
+                    "num_bikes_available", "num_ebikes_available", "num_manual_bikes_available",
+                    "availability", "availability_status", "bike_rent_rate", "ebike_rent_rate", 
+                    "rolling_avg_score"]
+    gold_columns = [column for column in GOLD_COLUMNS if column in df.columns]
+
+    records = df[gold_columns].to_dict(orient="records")
+    response = (supabase.schema("gold")
+                .table("enriched_bks")
+                .upsert(records, on_conflict="station_id,collected_at", count="exact")
+                .execute())
+    print(f"{response.count} rows upserted to gold.enriched_bks")
+
+    # 11. Temporarily return the dataframe locally until KAN-13 (Alevtina's schema cache) is deployed live
     print("Data transformation complete! Summary of Gold Layer analytics:")
     return df
 
-
-
 if __name__ == "__main__":
     print("Initiating live KAN-15 database analytics pipeline runtime execution...")
-    try:
-        gold_layer_df = transform_and_load_to_gold()
-        
-        if gold_layer_df is not None and not gold_layer_df.empty:
-            print("\nSuccess! Previewing clean Gold analytics data rows:")
-            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
-            
-            print("\nUpserting transformed data to Supabase 'gold.enriched_bks' table...")            
-            db_columns = [
-                'collected_at',
-                'num_bikes_available',
-                'num_ebikes_available',
-                'num_manual_bikes_available',
-                'capacity',
-                'availability',
-                'availability_status',
-                'station_id',
-                'name',
-                'short_name',
-                'lon',
-                'lat',
-                'bike_rent_rate',
-                'ebike_rent_rate'
-            ]
-            
-            final_df = gold_layer_df[[col for col in db_columns if col in gold_layer_df.columns]]
-            records = final_df.to_dict(orient='records')
-            
-        db_response = (
-                        supabase.schema("gold")
-                        .table("enriched_bks")
-                        .upsert(records, on_conflict="station_id,collected_at")
-                        .execute()
-                    )            
-        print(f"Successfully loaded {len(records)} records into 'gold.enriched_bks'!")
+    gold_layer_df = transform_and_load_to_gold()
 
-
-        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
-
-
-    except Exception as e:
-        print(f"\nPipeline execution failure details: {e}")
+    if gold_layer_df is not None and not gold_layer_df.empty:
+        print("\nSuccess! Previewing clean Gold analytics data rows:")
+        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
 
 
