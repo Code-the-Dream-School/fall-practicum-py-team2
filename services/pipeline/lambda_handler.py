@@ -10,7 +10,6 @@ from supabase import create_client
 from pipeline.extract.extract import run_extract
 from pipeline.load.load_raw import load_raw
 from pipeline.transform.transform_gold import transform_and_load_to_gold
-from pipeline.enrichment.llm_enrichment import run_enrichment
 
 log = logging.getLogger()
 log.setLevel(logging.INFO)
@@ -55,6 +54,9 @@ def lambda_handler(event, context):
         "started_at": datetime.now(timezone.utc).isoformat(),
         "ended_at": None,
         "records_processed": 0,
+        "extracted": 0,
+        "loaded": 0,
+        "transformed": 0,
         "status": "running",
         "message": "Pipeline started",
     }
@@ -73,19 +75,23 @@ def lambda_handler(event, context):
 
         # Extract: save the JSON files to /tmp
         stage = "extract"
+        os.chdir(OUTPUT_DIR)
         station_count, bike_count = run_extract()
         result["stages"]["extract"] = {"stations": station_count, "bikes": bike_count}
+        run["extracted"] = station_count + bike_count
 
         # Load: upsert the JSON files into the raw schema
         stage = "load_raw"
         stations = load_raw(raw_db, "/tmp/station_information.json", "stations_raw")
         bikes = load_raw(raw_db, "/tmp/bike_information.json", "bike_information", "bike_id")
         run["records_processed"] = stations + bikes
+        run["loaded"] = stations + bikes
         result["stages"]["load_raw"] = {"stations": stations, "bikes": bikes}
 
         # Transform: build the gold table
         stage = "transform"
         gold = transform_and_load_to_gold()
+        run["transformed"] = len(gold)
         result["stages"]["transform"] = {"rows": len(gold)}
 
         run["status"] = "success"
