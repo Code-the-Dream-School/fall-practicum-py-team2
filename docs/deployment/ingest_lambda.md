@@ -1,15 +1,23 @@
 # Ingest Lambda Deployment Guide (KAN-32)
 
-Steps to deploy the Bay Area Bike Share **Ingest Lambda** to AWS and verify that it writes data to Supabase.
+Steps to package, deploy, and verify the Bay Area Bike Share **Ingest Lambda** on AWS.
 
 ---
 
-## 1. Set Up Least-Privilege IAM Role
+## 1. Store Secrets in AWS SSM Parameter Store
+1. Open **AWS Systems Manager → Parameter Store → Create parameter** (in your deployment region, e.g., `us-east-2`).
+2. Create two **`SecureString`** parameters (paste raw values without quotes):
+   * **`/bks/SUPABASE_URL`** — Supabase project URL
+   * **`/bks/SUPABASE_KEY`** — Supabase API key
+
+---
+
+## 2. Set Up Least-Privilege IAM Role
 1. In the AWS Console, go to **IAM → Roles → Create role**.
 2. Choose **AWS service** → **Lambda**, then click **Next**.
 3. Attach **`AWSLambdaBasicExecutionRole`** (allows writing logs to CloudWatch).
 4. Name the role **`bks-ingest-lambda-role`** and click **Create role**.
-5. Open **`bks-ingest-lambda-role`**, click **Add permissions → Create inline policy → JSON**, and scope access strictly to the project's SSM parameters:
+5. Open **`bks-ingest-lambda-role`**, click **Add permissions → Create inline policy → JSON**, and scope SSM access strictly to the two parameters:
    ```json
    {
      "Version": "2012-10-17",
@@ -32,30 +40,56 @@ Steps to deploy the Bay Area Bike Share **Ingest Lambda** to AWS and verify that
 
 ---
 
-## 2. Create & Deploy the Lambda Function
-1. Go to **AWS Lambda → Create function → Author from scratch**.
-2. Set **Function name** to `bks-ingest-lambda`, **Runtime** to `Python 3.11`, and **Execution role** to **`bks-ingest-lambda-role`**.
-3. Click **Create function**.
-4. Under **Code source**, click **Upload from → .zip file** and upload the deployment zip built from **KAN-31**.
-5. Under **Runtime settings → Edit**, set **Handler** to match the KAN-31 handler (e.g., `lambda_handler.lambda_handler`).
-6. Under **Configuration → General configuration → Edit**, set **Memory** to `512 MB` and **Timeout** to `1 min 0 sec`.
-7. **Secrets Configuration:** Do **not** store `SUPABASE_KEY` in plain-text Lambda environment variables. Ensure `SUPABASE_URL` and `SUPABASE_KEY` are stored as `SecureString` parameters in **AWS SSM Parameter Store** (configured in **KAN-30**) so the Lambda retrieves them at runtime via `boto3`. *(If needed by KAN-31, pass only non-sensitive parameter path names such as `SSM_SUPABASE_URL_PARAM` and `SSM_SUPABASE_KEY_PARAM` as environment variables.)*
+## 3. Build the Deployment Package (`.zip`)
+From the repository root, bundle `lambda_handler.py`, `services/pipeline/src/pipeline`, and Linux `x86_64` `Python 3.11` dependencies:
+
+```bash
+rm -rf build lambda_package.zip && mkdir -p build
+
+pip install \
+  --platform manylinux2014_x86_64 \
+  --target=build \
+  --implementation cp \
+  --python-version 3.11 \
+  --only-binary=:all: \
+  pandas numpy supabase requests python-dotenv
+
+cp -r services/pipeline/src/pipeline build/
+cp services/pipeline/lambda_handler.py build/
+
+cd build && zip -r ../lambda_package.zip . -x "*__pycache__*" "*.DS_Store" && cd ..
+```
 
 ---
 
-## 3. Invoke by Hand & Verify Database Writes
+## 4. Create & Deploy the Lambda Function
+1. Go to **AWS Lambda → Create function → Author from scratch**.
+2. Set **Function name** to **`bks-ingest-lambda`**, **Runtime** to **`Python 3.11`**, **Architecture** to **`x86_64`**, and **Execution role** to **`bks-ingest-lambda-role`**, then click **Create function**.
+3. Under **Code source**, click **Update → .zip file** and upload **`lambda_package.zip`**.
+4. Under **Runtime settings → Edit**, set **Runtime** to **`Python 3.11`** and **Handler** to **`lambda_handler.lambda_handler`**, then click **Save**.
+5. Under **Configuration → General configuration → Edit**, set **Memory** to **`512 MB`** and **Timeout** to **`1 min 0 sec`**, then click **Save**.
+6. Under **Configuration → Environment variables → Edit**, add the SSM parameter path names (do **not** store raw secrets here):
+   * `SUPABASE_URL_PARAM` = `/bks/SUPABASE_URL`
+   * `SUPABASE_KEY_PARAM` = `/bks/SUPABASE_KEY`
+
+---
+
+## 5. Invoke by Hand & Verify Database Writes
 
 ### Step A: Run Manual Test in AWS
 1. Open the **Test** tab in `bks-ingest-lambda`.
-2. Create a test event with `{}` and click **Test**.
-3. Confirm the execution status shows **Succeeded** (green) with no errors in CloudWatch logs.
+2. Enter `{"source": "manual"}` in the Event JSON box and click **Test**.
+3. Confirm the execution banner shows **Succeeded** (`"status": "ok"`).
 
 ### Step B: Confirm Database Writes in Supabase
-Run this query in the **Supabase SQL Editor** to confirm new rows were added:
+Run these queries in the **Supabase SQL Editor** to confirm the pipeline run logged cleanly and populated the Gold layer:
 
 ```sql
+SELECT run_id, status, extracted, loaded, transformed, message, ended_at
+FROM logs.pipeline_runs
+ORDER BY started_at DESC
+LIMIT 5;
+
 SELECT COUNT(*) AS total_rows, MAX(collected_at) AS latest_run
 FROM gold.enriched_bks;
 ```
-
-Confirm that `latest_run` matches the timestamp of your manual Lambda test.
