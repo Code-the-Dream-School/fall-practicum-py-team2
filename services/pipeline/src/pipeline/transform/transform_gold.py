@@ -26,9 +26,9 @@ def transform_and_load_to_gold():
     # 3. Download the raw tracking records Gaby is inserting
     print("Querying raw input logs straight from Supabase cloud database...")
     response = supabase.schema("raw").table("stations_raw").select("*").execute()
-    raw_df = pd.DataFrame(response.data)
+    df = pd.DataFrame(response.data)
     
-    if raw_df.empty:
+    if df.empty:
         print("Warning: Target database raw input table is currently empty.")
         return df
 
@@ -38,12 +38,10 @@ def transform_and_load_to_gold():
     gold_df = pd.DataFrame(gold_response.data, columns=keys)
     already_done = set(zip(gold_df["station_id"], gold_df["collected_at"]))
 
-    is_new = [key not in already_done for key in zip(raw_df["station_id"], raw_df["collected_at"])]
-    df = raw_df[is_new].copy()
-
-    if df.empty:
-        print("No new raw rows to transform.")
-        return df
+    if "collected_at" in df.columns:
+        df["is_new"] = [key not in already_done for key in zip(df["station_id"], df["collected_at"])]
+    else:
+        df["is_new"] = True
     
     # 5. Handle Data Quality & Cleansing Rules (Drop missing tracking IDs or GPS coordinates)
     df = df.dropna(subset=['lat', 'lon', 'station_id'])
@@ -131,7 +129,12 @@ def transform_and_load_to_gold():
                     "rolling_avg_score"]
     gold_columns = [column for column in GOLD_COLUMNS if column in df.columns]
 
-    records = df[gold_columns].to_dict(orient="records")
+    new_df = df    
+    if new_df.empty:
+        print("No new raw rows to transform.")
+        return df
+
+    records = new_df[gold_columns].to_dict(orient="records")
     response = (supabase.schema("gold")
                 .table("enriched_bks")
                 .upsert(records, on_conflict="station_id,collected_at", count="exact")
