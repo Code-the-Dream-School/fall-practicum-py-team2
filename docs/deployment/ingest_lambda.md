@@ -93,3 +93,9 @@ LIMIT 5;
 SELECT COUNT(*) AS total_rows, MAX(collected_at) AS latest_run
 FROM gold.enriched_bks;
 ```
+---
+
+### Verified Test Result
+* **Manual Test Run:** Invoked `bks-ingest-lambda` with `{"source": "manual"}` in `us-east-2` (`Python 3.11`, `512 MB` memory).
+* **Outcome:** Succeeded in `~8.16s` (`status: "ok"`), extracting and loading `373` stations and `777` bikes into `raw` and `gold.enriched_bks` (`latest_run` verified in Supabase).
+
