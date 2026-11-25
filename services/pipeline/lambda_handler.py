@@ -20,7 +20,7 @@ OUTPUT_DIR = "/tmp"
 
 def load_secrets():
     # Already set when testing locally, so there is no need to call AWS
-    if os.environ.get("SUPABASE_KEY"):
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY"):
         return
 
     ssm = boto3.client("ssm")
