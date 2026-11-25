@@ -32,10 +32,21 @@ def transform_and_load_to_gold():
         print("Warning: Target database raw input table is currently empty.")
         return df
 
-    # 4. Handle Data Quality & Cleansing Rules (Drop missing tracking IDs or GPS coordinates)
+    # 4. Only handle data that has not yet been transformed
+    keys = ["station_id", "collected_at"]
+    gold_response = supabase.schema("gold").table("enriched_bks").select("station_id,collected_at").execute()
+    gold_df = pd.DataFrame(gold_response.data, columns=keys)
+    already_done = set(zip(gold_df["station_id"], gold_df["collected_at"]))
+
+    if "collected_at" in df.columns:
+        df["is_new"] = [key not in already_done for key in zip(df["station_id"], df["collected_at"])]
+    else:
+        df["is_new"] = True
+    
+    # 5. Handle Data Quality & Cleansing Rules (Drop missing tracking IDs or GPS coordinates)
     df = df.dropna(subset=['lat', 'lon', 'station_id'])
     
-    # 5. Standardize Field Types & Fallback Map Counts safely from 'capacity' schema rows
+    # 6. Standardize Field Types & Fallback Map Counts safely from 'capacity' schema rows
     if 'num_bikes_available' not in df.columns and 'capacity' in df.columns:
         df['num_bikes_available'] = (df['capacity'] * 0.4).astype(int)
         df['num_docks_available'] = (df['capacity'] - df['num_bikes_available']).astype(int)
@@ -53,12 +64,12 @@ def transform_and_load_to_gold():
         df['num_ebikes_available'] = pd.to_numeric(df['num_ebikes_available'], errors='coerce').fillna(0).astype(int)
         df['num_manual_bikes_available'] = (df['num_bikes_available'] - df['num_ebikes_available']).clip(lower=0)
 
-    # 6. Derive Core Analytics Metric (The occupancy ratio score column)
+    # 7. Derive Core Analytics Metric (The occupancy ratio score column)
     df['availability'] = np.where(df['capacity'] > 0, (df['num_bikes_available'] / df['capacity']) * 100, 0.0)
     df['availability'] = df['availability'].round(2)
 
 
-    # 7. Process Dynamic Rolling Aggregate Window Trends (3-period group average trend)
+    # 8. Process Dynamic Rolling Aggregate Window Trends (3-period group average trend)
     if 'collected_at' in df.columns:
         df = df.sort_values(by=['station_id', 'collected_at'])
 
@@ -71,7 +82,7 @@ def transform_and_load_to_gold():
     # Larrenz KAN-18: Calculate net change in available bikes since previous reading
     df['bike_availability_change'] = df.groupby('station_id')['num_bikes_available'].diff().fillna(0).astype(int)
 
-    # 8. Derive Product Category Label Bounds (Availability Status classifications)
+    # 9. Derive Product Category Label Bounds (Availability Status classifications)
     conditions = [
     (df['availability'] == 0.00),
     (df['availability'] > 0.00) & (df['availability'] <= 20.00),
@@ -85,7 +96,7 @@ def transform_and_load_to_gold():
     if 'collected_at' in df.columns:
         df['collected_at'] = df['collected_at'].astype(str)
 
-    # 8.5 Derive Richer Gold Fields: Calculate manual bike counts and proportional preference rental rates
+    # 10 Derive Richer Gold Fields: Calculate manual bike counts and proportional preference rental rates
     # First, derive the number of manual bikes safely by subtracting ebikes from total available bikes
     df['num_ebikes_available'] = pd.to_numeric(df.get('num_ebikes_available', 0), errors='coerce').fillna(0).astype(int)
     df['num_manual_bikes_available'] = (df['num_bikes_available'] - df['num_ebikes_available']).clip(lower=0)
@@ -98,7 +109,7 @@ def transform_and_load_to_gold():
     df['ebike_rent_rate'] = df['ebike_rent_rate'].round(2)
 
 
-    # 9. Clean up temporary operational utility columns before final processing
+    # 11. Clean up temporary operational utility columns before final processing
     if 'total_capacity' in df.columns:
         df = df.drop(columns=['total_capacity'])
         
@@ -111,55 +122,35 @@ def transform_and_load_to_gold():
     df[numeric_cols] = df[numeric_cols].fillna(0.0)
     df[text_cols] = df[text_cols].fillna("")
 
-    # 10. Temporarily return the dataframe locally until KAN-13 (Alevtina's schema cache) is deployed live
+    # 12. Upsert to Supabase (added by Gaby)
+    GOLD_COLUMNS = ["collected_at", "station_id", "name", "short_name", "lat", "lon", "capacity",
+                    "num_bikes_available", "num_ebikes_available", "num_manual_bikes_available",
+                    "availability", "availability_status", "bike_rent_rate", "ebike_rent_rate", 
+                    "rolling_avg_score"]
+    gold_columns = [column for column in GOLD_COLUMNS if column in df.columns]
+
+    new_df = df    
+    if new_df.empty:
+        print("No new raw rows to transform.")
+        return df
+
+    records = new_df[gold_columns].to_dict(orient="records")
+    response = (supabase.schema("gold")
+                .table("enriched_bks")
+                .upsert(records, on_conflict="station_id,collected_at", count="exact")
+                .execute())
+    print(f"{response.count} rows upserted to gold.enriched_bks")
+
+    # 13. Temporarily return the dataframe locally until KAN-13 (Alevtina's schema cache) is deployed live
     print("Data transformation complete! Summary of Gold Layer analytics:")
     return df
 
-
-
 if __name__ == "__main__":
     print("Initiating live KAN-15 database analytics pipeline runtime execution...")
-    try:
-        gold_layer_df = transform_and_load_to_gold()
-        
-        if gold_layer_df is not None and not gold_layer_df.empty:
-            print("\nSuccess! Previewing clean Gold analytics data rows:")
-            print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
-            
-            print("\nUpserting transformed data to Supabase 'gold.enriched_bks' table...")            
-            db_columns = [
-                'collected_at',
-                'num_bikes_available',
-                'num_ebikes_available',
-                'num_manual_bikes_available',
-                'capacity',
-                'availability',
-                'availability_status',
-                'station_id',
-                'name',
-                'short_name',
-                'lon',
-                'lat',
-                'bike_rent_rate',
-                'ebike_rent_rate'
-            ]
-            
-            final_df = gold_layer_df[[col for col in db_columns if col in gold_layer_df.columns]]
-            records = final_df.to_dict(orient='records')
-            
-        db_response = (
-                        supabase.schema("gold")
-                        .table("enriched_bks")
-                        .upsert(records, on_conflict="station_id,collected_at")
-                        .execute()
-                    )            
-        print(f"Successfully loaded {len(records)} records into 'gold.enriched_bks'!")
+    gold_layer_df = transform_and_load_to_gold()
 
-
-        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'num_bikes_available', 'bike_availability_change']].head(10))
-
-
-    except Exception as e:
-        print(f"\nPipeline execution failure details: {e}")
+    if gold_layer_df is not None and not gold_layer_df.empty:
+        print("\nSuccess! Previewing clean Gold analytics data rows:")
+        print(gold_layer_df[['station_id', 'name', 'availability', 'rolling_avg_score', 'availability_status', 'bike_rent_rate', 'ebike_rent_rate']].head(10))
 
 

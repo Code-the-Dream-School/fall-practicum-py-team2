@@ -55,3 +55,5 @@ def run_extract():
     )
     bikes = bikes[in_sf].drop(columns=['rental_uris'])
     bikes.to_json('./bike_information.json', orient='records', date_format='iso', indent=2)
+
+    return (len(stations), len(bikes))
