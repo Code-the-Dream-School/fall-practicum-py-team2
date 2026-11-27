@@ -65,7 +65,7 @@ To backfill and keep `gold.station_enrichments` up to date automatically without
 
 * **Schedule Name:** `bks-enrich-schedule` (`us-east-2`, `default` group)
 * **Target:** `bks-enrich-lambda` (`AWS Lambda Invoke`)
-* **Rate Expression:** `rate(15 minutes)` during initial backfill (can be slowed to `rate(4 hours)` or disabled once all stations are enriched)
+* **Rate Expression:** `rate(5 minutes)` during initial backfill (disabled once all 380 stations were backfilled; switch to `rate(4 hours)` when continuous ingestion is enabled)
 * **Retry Policy:** Disabled (`Off`) to avoid unintended API quota consumption
 * **Target Payload:**
   ```json
@@ -76,6 +76,6 @@ To backfill and keep `gold.station_enrichments` up to date automatically without
   ```
 
 ### How Backfill & Steady-State Work
-* **Initial Backfill:** Each scheduled invocation processes the next `10` un-enriched stations (`~57s` runtime with a `4.5s` per-request delay), completing all ~378 stations across ~37 runs (~9 hours).
-* **Idempotent No-Op:** Once all stations exist in `station_enrichments`, `get_pending_stations` returns `0` records and the Lambda exits in under 1 second without making LLM API calls until new stations appear.
+* **Initial Backfill:** Each scheduled invocation processes the next `10` un-enriched stations (`~57s` runtime with a `4.5s` per-request delay), completing all `380` stations across ~35 runs (~3 hours) before disabling the schedule.
+* **Idempotent No-Op:** Once all stations exist in `gold.station_enrichments`, `get_pending_stations` returns `0` records and the Lambda exits in under 1 second without making LLM API calls until new stations appear.
 * **Manual Fast Backfill:** For on-demand catch-up runs, invoke `bks-enrich-lambda` manually from the AWS Console with `{"source": "manual", "batch_size": 50}` (requires Lambda timeout set to at least 5 minutes).
