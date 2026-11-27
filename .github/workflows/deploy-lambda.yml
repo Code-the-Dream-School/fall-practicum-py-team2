@@ -1,0 +1,53 @@
+name: Deploy Ingest Lambda
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual test runs from the GitHub Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Lambda deployment package
+        run: |
+          rm -rf build lambda_package.zip && mkdir -p build
+
+          pip install \
+            --platform manylinux2014_x86_64 \
+            --target=build \
+            --implementation cp \
+            --python-version 3.11 \
+            --only-binary=:all: \
+            pandas numpy supabase requests python-dotenv
+
+          cp -r services/pipeline/src/pipeline build/
+          cp services/pipeline/lambda_handler.py build/
+
+          cd build && zip -r ../lambda_package.zip . -x "*__pycache__*" "*.DS_Store" && cd ..
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy zip to AWS Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name bks-ingest-lambda \
+            --zip-file fileb://lambda_package.zip
+
+          aws lambda wait function-updated \
+            --function-name bks-ingest-lambda
