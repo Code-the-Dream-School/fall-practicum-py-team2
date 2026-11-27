@@ -56,3 +56,26 @@ Upload `enrich_lambda_package.zip` to `bks-enrich-lambda` in AWS Lambda (`Code` 
   }
   ```
 - **Idempotency Behavior:** Before calling the LLM, `run_enrichment` queries existing `station_id` records in `gold.station_enrichments` and processes only unenriched stations. Re-running skips already-enriched stations and automatically retries any station that previously logged an error in `logs.enrichment_errors`.
+
+---
+
+## Automated Scheduling (`bks-enrich-schedule`)
+
+To backfill and keep `gold.station_enrichments` up to date automatically without hitting Gemini free-tier rate limits or Lambda execution timeouts, an Amazon EventBridge Scheduler rule invokes `bks-enrich-lambda` in small idempotent batches:
+
+* **Schedule Name:** `bks-enrich-schedule` (`us-east-2`, `default` group)
+* **Target:** `bks-enrich-lambda` (`AWS Lambda Invoke`)
+* **Rate Expression:** `rate(15 minutes)` during initial backfill (can be slowed to `rate(4 hours)` or disabled once all stations are enriched)
+* **Retry Policy:** Disabled (`Off`) to avoid unintended API quota consumption
+* **Target Payload:**
+  ```json
+  {
+    "source": "eventbridge",
+    "batch_size": 10
+  }
+  ```
+
+### How Backfill & Steady-State Work
+* **Initial Backfill:** Each scheduled invocation processes the next `10` un-enriched stations (`~57s` runtime with a `4.5s` per-request delay), completing all ~378 stations across ~37 runs (~9 hours).
+* **Idempotent No-Op:** Once all stations exist in `station_enrichments`, `get_pending_stations` returns `0` records and the Lambda exits in under 1 second without making LLM API calls until new stations appear.
+* **Manual Fast Backfill:** For on-demand catch-up runs, invoke `bks-enrich-lambda` manually from the AWS Console with `{"source": "manual", "batch_size": 50}` (requires Lambda timeout set to at least 5 minutes).
